@@ -119,6 +119,7 @@ def execute_interval(interval):
 		analyze_results(proc[0], nc_errs)
 
 
+print('\nAll your IPs are belong to us...\n')
 execute_interval(intervals[interval_execution_index])
 	
 
