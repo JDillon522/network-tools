@@ -3,6 +3,8 @@
 import subprocess as sub
 import re
 import time
+from html.parser import HTMLParser
+from itertools import chain
 
 intervals = []
 interval_creation_i = 0
@@ -14,51 +16,64 @@ results = []
 valid_net = False
 time0 = time.time()
 
+class LinkParser(HTMLParser):
+	def reset(self):
+		HTMLParser.reset(self)
+		self.link = ''
+
+	def handle_starttag(self, tag, attrs):
+		if tag == 'a':
+			for name, value in attrs:
+				if name == 'href':
+					self.link = re.sub('\.\/', '', value)
+                    
 
 while not valid_net:
 	try:
-		net = input('Enter network address with only 3 octets (e.g. 192.168.0): ') or '192.168.0'
+		net = input('1) Enter network address with only 3 octets (e.g. 192.168.0): ') or '192.168.0'
 		split_net = net.split('.')
 		valid_octets = len([i for i in net.split('.') if i.isdigit()]) == len(split_net)
 
 		if len(split_net) != 3 or not valid_octets:
-			print('Your network address must have three valid octets... {} is invalid'.format(net))
+			print('1) Your network address must have three valid octets... {} is invalid'.format(net))
 		else:
 			valid_net = True
 	except ValueError as e:
-		print('You did not enter in a valid network address')
+		print('1) You did not enter in a valid network address')
 
 valid_start = False
 while not valid_start:
 	try:
-		start = input('Enter starting host range less than 254 (e.g. 1): ') or '1'
+		start = input('2) Enter starting host range less than 254 (e.g. 1): ') or '1'
 		
 		if int(start) > 254:
-			print('Your starting range must be less than 254')
+			print('2) Your starting range must be less than 254')
 		else:
 			valid_start = True
 	except ValueError as e:
-		print('Your starting range is not valid')
+		print('2) Your starting range is not valid')
 
 valid_end = False
 while not valid_end:
 	try:
-		end = input('Enter ending host range (e.g. 254): ') or '254'
+		end = input('3) Enter ending host range (e.g. 254): ') or '254'
 		if int(end) > 254:
-			print('Your ending host range must be less than 254')
+			print('3) Your ending host range must be less than 254')
 		elif int(end) < int(start):
-			print('Your ending host range must be greater than your start at {}'.format(start))
+			print('3) Your ending host range must be greater than your start at {}'.format(start))
 		else:
 			valid_end = True
 	except ValueError as e:
 		print('Your ending host range must be a number')
 
 # TODO add validation
-ports = input('Enter ports space-delimited (e.g. 20 21 22 23 80): ') or '20 21 22 23 80'
+ports = input('4) Enter ports space-delimited (e.g. 20 21 22 23 80): ') or '20 21 22 23 80'
 # TODO add validation
-interval_step = input('Enter the batch size for parallel execution. (default: 25)\n(note: the larger the batch size, the more likely the target IP \nwill be unable to handle requests and drop connections.)') or '25'
+interval_step = input('5) Enter the batch size for parallel execution. (default: 25)\n   (note: the larger the batch size, the more likely the target IP \n   will be unable to handle requests and drop connections.)') or '25'
 interval_step = int(interval_step)
-
+# TODO add validation
+pause_time = input('6) Enter the desired pause time in seconds between intervals to try and prevent\n   too many open ssh connections. (defaults to 10) ') or '10'
+pause_time = int(pause_time)
 
 # Build intervals in steps of 5
 for i in range(0, int(end), interval_step):
@@ -76,16 +91,42 @@ for i in range(0, int(end), interval_step):
 	intervals.append(interval)
 	
 def format_output(i, output):
-	return re.sub('\|S-chain\|-<>-|127.0.0.1:9050|-<><>-|\(UNKNOWN\)\s\[.+\]\s|\open\s:\sOperation\snow\sin\sprogress|.+timeout\n|.+OK\n', '', output)
+	return re.sub('\|S-chain\|-<>-|127.0.0.1:9050|-<><>-.+\(UNKNOWN\).+|\(UNKNOWN\)\s\[.+\]\s|open\s:\sOperation\snow\sin\sprogress|.+timeout\n|.+OK\n', '', output)
 
 def analyze_results(i, nc):
-
 	if 'open' in nc:
+		wget_data = ''
+
 		formatted = format_output(i, nc)
 		# TODO if there is an open port on 80 or 23, go ahead and make a wget request
 		# TODO if there is an active machine go ahead and scan for higher ports
-		results.append('-------- IP: {}.{} ---------------\n{}'.format(net, i, formatted))
+		
+
+		if '80 (http)' in formatted:
+			wget_data = wget_http('{}.{}'.format(net, i))
+	
+		results.append('-------- IP: {}.{} ----------------\n{}'.format(net, i, formatted + wget_data))
+
 	tick_counters()
+
+def wget_http(ip):
+	wget_res = sub.run(['wget', '-qO-', ip], stdout=sub.PIPE, stderr=sub.PIPE, universal_newlines=True)
+	
+	wget_res = '--- WGET response from Port 80:\n' + re.sub('^.+<>.+$\n', '', wget_res.stdout)
+
+	if '<a href' in wget_res:
+		parser = LinkParser()
+		gen_link(wget_res, parser)
+		
+		wget_res += '-- Suggested additional request: `wget {}/{}\n'.format(ip, parser.link)
+		parser.reset()
+
+	return wget_res
+
+
+def gen_link(f, parser):
+    for line in f:
+        parser.feed(line)
 
 def tick_counters():
 	global interval_analyzed_results_count
@@ -100,6 +141,9 @@ def tick_counters():
 		nc_processes = []
 
 		if interval_execution_index < len(intervals):
+			if pause_time > 0:
+				print('----- Pausing for {} seconds to try and avoid ssh sitting with too many open connections...\n'.format(pause_time))
+				time.sleep(pause_time)
 			execute_interval(intervals[interval_execution_index])
 	
 def execute_interval(interval):
@@ -126,6 +170,6 @@ execute_interval(intervals[interval_execution_index])
 	
 time1 = time.time() - time0
 print('\n-------- Final Rollup --------------------')
-print('---------- Total Scan Time: {} --------'.format(time.strftime("%M:%S", time.gmtime(time1))))
+print('-------- Total Scan Time: {} ----------'.format(time.strftime("%M:%S", time.gmtime(time1))))
 for res in results:
 	print(res)
