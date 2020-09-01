@@ -4,7 +4,7 @@
 # File Name : autotunnel.sh
 # Author : Gabriel Akonom
 # Creation Date : 01Sep2020
-# Last Modified : Tue 01 Sep 2020 08:14:51 PM UTC
+# Last Modified : Tue Sep  1 13:39:58 2020
 # Description:
 #
 ########################################################################
@@ -13,7 +13,7 @@
 echo "Please input: <user>@<ipaddress>"
 read ipadd
 
-#retrieve ssh port to use
+#retrieve ssh port to use and set default
 echo "What SSH port should be used to log into $ipadd? (DEFAULT: 22)"
 read altport
 
