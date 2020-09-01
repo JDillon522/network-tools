@@ -2,6 +2,7 @@
 
 import subprocess as sub
 import re
+import time
 
 intervals = []
 interval_creation_i = 0
@@ -11,6 +12,8 @@ nc_processes = []
 interval_analyzed_results_count = 0
 results = []
 valid_net = False
+time0 = time.time()
+
 
 while not valid_net:
 	try:
@@ -118,11 +121,11 @@ def execute_interval(interval):
 		nc_out, nc_errs = proc[1].communicate()
 		analyze_results(proc[0], nc_errs)
 
-
 print('\nAll your IPs are belong to us...\n')
 execute_interval(intervals[interval_execution_index])
 	
-
-print('\n-------- Final Rollup ---------------\n')
+time1 = time.time() - time0
+print('\n-------- Final Rollup --------------------')
+print('---------- Total Scan Time: {} --------'.format(time.strftime("%M:%S", time.gmtime(time1))))
 for res in results:
 	print(res)
