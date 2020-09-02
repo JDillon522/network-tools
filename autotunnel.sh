@@ -4,7 +4,7 @@
 # File Name : autotunnel.sh
 # Author : Gabriel Akonom
 # Creation Date : 01Sep2020
-# Last Modified : Wed 02 Sep 2020 12:22:34 AM UTC
+# Last Modified : Wed 02 Sep 2020 06:00:34 AM UTC
 # Description:
 #
 ########################################################################
@@ -66,7 +66,8 @@ while getopts “:crld” opt; do
 
 #option c clears the tunnel table
         c)
-            echo "      LOCAL HOSTNAME:PORT           |          CONNECTION ADDRESS:PORT             |       REMOTE HOSTNAME    " > tuntable.txt
+            echo "" > tuntable.txt
+            echo "===================Tunnel Table=================" >> tuntable.txt
             echo "" >> tuntable.txt
             ;;
 
@@ -111,10 +112,21 @@ while getopts “:crld” opt; do
 
                 echo "Finally, what port is this tunnel pointing to at $pipadd? (DEFAULT: 22)"
                 read pport
+            
                 if [ -z $pport ]
                 then
                     pport="22"
                 fi
+                
+                echo "#!/bin/bash" > LOCAL_tmp.sh
+                echo "echo 'Opening PASS-THRU tunnel using port $lport...'" >> LOCAL_tmp.sh
+                echo "echo 'Pointing at $pipadd port $pport'" >> LOCAL_tmp.sh
+                echo "echo 'Hostname is ${hname}'" >> LOCAL_tmp.sh
+                echo "ssh -p $altport $ipadd -L $lport:$pipadd:$pport -NT" >> LOCAL_tmp.sh
+                chmod +x LOCAL_tmp.sh
+            
+                echo "$currname:$lport ---> $hname ---> $pipadd:$pport" >> tuntable.txt
+                xterm -T "$lport-PASS-THRU-$hname" -e 'bash LOCAL_tmp.sh | less' &
             fi
             
             if [ -z $pipadd ]
@@ -122,14 +134,21 @@ while getopts “:crld” opt; do
                 pipadd="localhost"
             fi
 
-            echo "#!/bin/bash" > LOCAL_tmp.sh
-            echo "echo 'Opening LOCAL tunnel using port $lport...'" >> LOCAL_tmp.sh
-            echo "echo 'Hostname is ${hname}'" >> LOCAL_tmp.sh
-            echo "ssh -p $altport $ipadd -L $lport:$pipadd:$pport -NT" >> LOCAL_tmp.sh
-            chmod +x LOCAL_tmp.sh
+            #test connection and get remote hostname
+            echo -e "\nTesting connection to $ipadd\nPlease input password in the new terminal window popup" 
+            sleep 11
+            hname=$(ssh -p $lport $ipadd hostname)
             
-            echo "$currname:$lport     |   $ipadd:$pport    | $hname" >> tuntable.txt
-            xterm -T "$lport-$hname" -e 'bash LOCAL_tmp.sh | less' &
+            l2port=$((lport+1))
+            echo "#!/bin/bash" > STATIC_tmp.sh
+            echo "echo 'Port $l2port is STATIC at localhost:$pport...'" >> STATIC_tmp.sh
+            echo "echo 'Hostname is ${hname}'" >> STATIC_tmp.sh
+            echo "ssh -p $lport $ipadd -L $l2port:localhost:$pport -NT" >> STATIC_tmp.sh
+            chmod +x STATIC_tmp.sh
+                        
+            echo "$currname:$l2port ---> $hname ---> localhost:$pport" >> tuntable.txt
+            xterm -T "$l2port-STATIC-$hname" -e 'bash STATIC_tmp.sh | less' &
+
             ;;
 #option d creates a dynamic connection
         d)
@@ -151,11 +170,11 @@ while getopts “:crld” opt; do
     esac
 done
 
-
+echo ""
 cat tuntable.txt
 echo -e "\nCleaning Up...\n"
 
 sleep 3
 rm LOCAL_tmp.sh
 rm DYNAMIC_tmp.sh
-
+rm STATIC_tmp.sh
