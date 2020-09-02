@@ -4,7 +4,7 @@
 # File Name : autotunnel.sh
 # Author : Gabriel Akonom
 # Creation Date : 01Sep2020
-# Last Modified : Wed 02 Sep 2020 06:00:34 AM UTC
+# Last Modified : Wed 02 Sep 2020 12:39:34 PM UTC
 # Description:
 #
 ########################################################################
@@ -102,10 +102,34 @@ while getopts “:crld” opt; do
                 then
                     pport="22"
                 fi
+                
+                if [ -z $pipadd ]
+                then
+                    pipadd="localhost"
+                fi
+
+                echo "#!/bin/bash" > LOCAL_tmp.sh
+                echo "echo 'Opening STATIC tunnel using port $lport...'" >> LOCAL_tmp.sh
+                echo "echo 'Hostname is ${hname}'" >> LOCAL_tmp.sh
+                echo "ssh -p $altport $ipadd -L $lport:$pipadd:$pport -NT" >> LOCAL_tmp.sh
+                chmod +x LOCAL_tmp.sh
+            
+                echo "$currname:$lport ---> $hname ---> $pipadd:$pport" >> tuntable.txt
+                xterm -T "$lport-STATIC-$hname" -e 'bash LOCAL_tmp.sh | less' &
+
             elif [ $tunend -eq 3 ]
             then   
                 pipadd=localhost
                 pport=22
+
+                echo "#!/bin/bash" > LOCAL_tmp.sh
+                echo "echo 'Opening STATIC tunnel using port $lport...'" >> LOCAL_tmp.sh
+                echo "echo 'Hostname is ${hname}'" >> LOCAL_tmp.sh
+                echo "ssh -p $altport $ipadd -L $lport:$pipadd:$pport -NT" >> LOCAL_tmp.sh
+                chmod +x LOCAL_tmp.sh
+            
+                echo "$currname:$lport ---> $hname ---> $pipadd:$pport" >> tuntable.txt
+                xterm -T "$lport-STATIC-$hname" -e 'bash LOCAL_tmp.sh | less' &
             else
                 echo "What ip address will this tunnel be POINTING to? (DEFAULT: localhost)"
                 read pipadd
@@ -118,6 +142,11 @@ while getopts “:crld” opt; do
                     pport="22"
                 fi
                 
+                if [ -z $pipadd ]
+                then
+                    pipadd="localhost"
+                fi
+
                 echo "#!/bin/bash" > LOCAL_tmp.sh
                 echo "echo 'Opening PASS-THRU tunnel using port $lport...'" >> LOCAL_tmp.sh
                 echo "echo 'Pointing at $pipadd port $pport'" >> LOCAL_tmp.sh
@@ -127,27 +156,23 @@ while getopts “:crld” opt; do
             
                 echo "$currname:$lport ---> $hname ---> $pipadd:$pport" >> tuntable.txt
                 xterm -T "$lport-PASS-THRU-$hname" -e 'bash LOCAL_tmp.sh | less' &
+            
+                #test connection and get remote hostname
+                echo -e "\nTesting connection to $ipadd\nPlease input password in the new terminal window popup" 
+                sleep 11
+                hname=$(ssh -p $lport $ipadd hostname)
+            
+                l2port=$((lport+1))
+                echo "#!/bin/bash" > STATIC_tmp.sh
+                echo "echo 'Port $l2port is STATIC at localhost:$pport...'" >> STATIC_tmp.sh
+                echo "echo 'Hostname is ${hname}'" >> STATIC_tmp.sh
+                echo "ssh -p $lport $ipadd -L $l2port:localhost:$pport -NT" >> STATIC_tmp.sh
+                chmod +x STATIC_tmp.sh
+                            
+                echo "$currname:$l2port ---> $hname ---> localhost:$pport" >> tuntable.txt
             fi
             
-            if [ -z $pipadd ]
-            then
-                pipadd="localhost"
-            fi
 
-            #test connection and get remote hostname
-            echo -e "\nTesting connection to $ipadd\nPlease input password in the new terminal window popup" 
-            sleep 11
-            hname=$(ssh -p $lport $ipadd hostname)
-            
-            l2port=$((lport+1))
-            echo "#!/bin/bash" > STATIC_tmp.sh
-            echo "echo 'Port $l2port is STATIC at localhost:$pport...'" >> STATIC_tmp.sh
-            echo "echo 'Hostname is ${hname}'" >> STATIC_tmp.sh
-            echo "ssh -p $lport $ipadd -L $l2port:localhost:$pport -NT" >> STATIC_tmp.sh
-            chmod +x STATIC_tmp.sh
-                        
-            echo "$currname:$l2port ---> $hname ---> localhost:$pport" >> tuntable.txt
-            xterm -T "$l2port-STATIC-$hname" -e 'bash STATIC_tmp.sh | less' &
 
             ;;
 #option d creates a dynamic connection
