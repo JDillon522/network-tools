@@ -5,6 +5,8 @@ import re
 import time
 from html.parser import HTMLParser
 from itertools import chain
+import builtins
+import textwrap
 
 intervals = []
 interval_creation_i = 0
@@ -13,21 +15,24 @@ interval_execution_index = 0
 nc_processes = []
 interval_analyzed_results_count = 0
 results = []
-valid_net = False
 time0 = time.time()
+indent_width = '    '
 
 class LinkParser(HTMLParser):
 	def reset(self):
 		HTMLParser.reset(self)
-		self.link = ''
+		self.link = []
 
 	def handle_starttag(self, tag, attrs):
 		if tag == 'a':
 			for name, value in attrs:
 				if name == 'href':
-					self.link = re.sub('\.\/', '', value)
-                    
+					self.link.append(re.sub('\.\/', '', value) + '\n')
 
+def printIndent(*args, **kwargs):
+    builtins.print("    > ", *args, **kwargs)
+
+valid_net = False
 while not valid_net:
 	try:
 		net = input('1) Enter network address with only 3 octets (e.g. 192.168.0): ') or '192.168.0'
@@ -72,8 +77,14 @@ ports = input('4) Enter ports space-delimited (e.g. 20 21 22 23 80): ') or '20 2
 interval_step = input('5) Enter the batch size for parallel execution. (default: 25)\n   (note: the larger the batch size, the more likely the target IP \n   will be unable to handle requests and drop connections.)') or '25'
 interval_step = int(interval_step)
 # TODO add validation
-pause_time = input('6) Enter the desired pause time in seconds between intervals to try and prevent\n   too many open ssh connections. (defaults to 10) ') or '10'
+pause_time = input('6) Enter the desired pause time in seconds between intervals to \n   try and preventtoo many open ssh connections. (defaults to 10) ') or '10'
 pause_time = int(pause_time)
+# TODO add validation
+download_requests = input('7) Do you want to automatically download wget and ftp requests to your box? (default: yes)') or 'yes'
+if download_requests == 'yes':
+	download_requests = True
+else:
+	download_requests = False
 
 # Build intervals in steps of 5
 for i in range(0, int(end), interval_step):
@@ -95,34 +106,79 @@ def format_output(i, output):
 
 def analyze_results(i, nc):
 	if 'open' in nc:
+		ftp_data = ''
 		wget_data = ''
 
 		formatted = format_output(i, nc)
 		# TODO if there is an open port on 80 or 23, go ahead and make a wget request
 		# TODO if there is an active machine go ahead and scan for higher ports
-		
+		if '21 (ftp)' in formatted:
+			ftp_data = wget_ftp('{}.{}'.format(net, i))
 
 		if '80 (http)' in formatted:
 			wget_data = wget_http('{}.{}'.format(net, i))
 	
-		results.append('-------- IP: {}.{} ----------------\n{}'.format(net, i, formatted + wget_data))
+		results.append('-------- IP: {}.{} ----------------\n{}'.format(net, i, formatted + ftp_data + '\n' + wget_data))
 
 	tick_counters()
 
 def wget_http(ip):
-	wget_res = sub.run(['wget', '-qO-', ip], stdout=sub.PIPE, stderr=sub.PIPE, universal_newlines=True)
+	wget_args = ['wget', '-qO-', ip]
+
+	if download_requests:
+		wget_args = [
+			'wget', 
+			'-r', 
+			'-nH',
+			# '--protocol-directories=wget/{}'.format(ip), 
+			'-P{}/wget'.format(ip), 
+			ip
+		]
+
+	wget_res = sub.run(wget_args, stdout=sub.PIPE, stderr=sub.PIPE, universal_newlines=True)
 	
-	wget_res = '--- WGET response from Port 80:\n' + re.sub('^.+<>.+$\n', '', wget_res.stdout)
+	if not download_requests:
+		wget_res = '--- WGET response from Port 80:\n' + re.sub('^.+<>.+$\n', '', wget_res.stdout)
 
-	if '<a href' in wget_res:
-		parser = LinkParser()
-		gen_link(wget_res, parser)
-		
-		wget_res += '-- Suggested additional request: `wget {}/{}\n'.format(ip, parser.link)
-		parser.reset()
+		if '<a href' in wget_res:
+			parser = LinkParser()
+			gen_link(wget_res, parser)
+			
+			wget_res += '-- Suggested additional wget requests:\nwget {}/{}'.format(ip, 'wget {}/'.format(ip).join(parser.link))
+			parser.reset()
 
-	return wget_res
+		return textwrap.indent(wget_res, indent_width)
+	
+	return '--- WGET response from Port 80 downloaded to ~/{}/wget'.format(ip)
 
+def wget_ftp(ip):
+	ftp_args = ['wget', '-qO-', 'ftp://anonymous@{}'.format(ip)]
+
+	if download_requests:
+		ftp_args = [
+			'wget', 
+			'-r', 
+			'-nH',
+			# '--protocol-directories=ftp/{}'.format(ip), 
+			'-P{}/ftp'.format(ip),
+			'ftp://anonymous@{}'.format(ip)
+		]
+
+	ftp_res = sub.run(ftp_args, stdout=sub.PIPE, stderr=sub.PIPE, universal_newlines=True)
+
+	if not download_requests:
+		ftp_res = '--- FTP response from Port 21:\n' + re.sub('^.+<>.+$\n', '', ftp_res.stdout)
+
+		if '<a href' in ftp_res:
+			parser = LinkParser()
+			gen_link(ftp_res, parser)
+			
+			ftp_res += '-- Suggested additional requests:\nwget {}'.format('wget '.join(parser.link))
+			parser.reset()
+
+		return textwrap.indent(ftp_res, indent_width)
+	
+	return '--- FTP response from Port 21 downloaded to ~/{}/ftp'.format(ip)
 
 def gen_link(f, parser):
     for line in f:
@@ -156,7 +212,14 @@ def execute_interval(interval):
 		#(-w1) waiting no more than 1second for a connection to occur
 		
 
-		nc_args = ['nc', '-n', '-v', '-z', '-w1', '{}.{}'.format(net, i)] +  ports.split(' ')
+		nc_args = [
+			'nc', 
+			'-n', 
+			'-v', 
+			'-z', 
+			'-w1', 
+			'{}.{}'.format(net, i)
+		] +  ports.split(' ')
 		
 		nc_processes.append([i, sub.Popen(nc_args, stdout=sub.PIPE, stderr=sub.PIPE, universal_newlines=True)])
 
