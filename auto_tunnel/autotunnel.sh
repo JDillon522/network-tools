@@ -9,6 +9,65 @@
 #
 ########################################################################
 
+
+# FUNCTIONS  ################################################
+create_dynamic(){
+    echo "#!/bin/bash" > DYNAMIC_tmp.sh
+    echo "echo 'Opening DYNAMIC tunnel using port $lport...'" >> DYNAMIC_tmp.sh
+    echo "echo 'Hostname is $hname'" >> DYNAMIC_tmp.sh
+    echo "ssh -p $altport $ipadd -D 9050 -NT" >> DYNAMIC_tmp.sh
+    chmod +x DYNAMIC_tmp.sh
+        
+    xterm -T "DYNAMIC-$lport-$hname" -e 'bash DYNAMIC_tmp.sh | less' & 
+
+sleep 1
+rm DYNAMIC_tmp.sh
+
+}
+create_static(){
+    echo "#!/bin/bash" > LOCAL_tmp.sh
+    echo "echo 'Opening STATIC tunnel using port $lport...'" >> LOCAL_tmp.sh
+    echo "echo 'Hostname is ${hname}'" >> LOCAL_tmp.sh
+    echo "ssh -p $altport $ipadd -L $lport:$pipadd:$pport -NT" >> LOCAL_tmp.sh
+    chmod +x LOCAL_tmp.sh
+            
+    echo "$currname:$lport ---> $hname ---> $pipadd:$pport" >> tuntable.txt
+    xterm -T "$lport-STATIC-$hname" -e 'bash LOCAL_tmp.sh | less' &
+
+sleep 1
+rm LOCAL_tmp.sh
+
+}
+create_passthru(){
+    echo "#!/bin/bash" > LOCAL_tmp.sh
+    echo "echo 'Opening PASS-THRU tunnel using port $lport...'" >> LOCAL_tmp.sh
+    echo "echo 'Pointing at $pipadd port $pport'" >> LOCAL_tmp.sh
+    echo "echo 'Hostname is ${hname}'" >> LOCAL_tmp.sh
+    echo "ssh -p $altport $ipadd -L $lport:$pipadd:$pport -NT" >> LOCAL_tmp.sh
+    chmod +x LOCAL_tmp.sh
+            
+    echo "$currname:$lport ---> $hname ---> $pipadd:$pport" >> tuntable.txt
+    xterm -T "$lport-PASS-THRU-$hname" -e 'bash LOCAL_tmp.sh | less' &
+
+    sleep 1
+    rm LOCAL_tmp.sh
+
+}
+create_altstatic(){
+    echo "#!/bin/bash" > STATIC_tmp.sh
+    echo "echo 'Port $l2port is STATIC at localhost:$pport...'" >> STATIC_tmp.sh
+    echo "echo 'Hostname is ${hname}'" >> STATIC_tmp.sh
+    echo "ssh -p $lport $ipadd -L $l2port:localhost:$pport -NT" >> STATIC_tmp.sh
+    chmod +x STATIC_tmp.sh
+                            
+    echo "$currname:$l2port ---> $hname ---> localhost:$pport" >> tuntable.txt
+    xterm -T "$lport-STATIC-$hname" -e 'bash STATIC_tmp.sh | less' &
+    
+    sleep 1
+    rm STATIC_tmp.sh
+}
+
+# BEGIN ######################################################
 #what's the scenario?
 echo "Are you creating an initial tunnel, building upon another, or creating a remote tunnel?"
 echo -e "1 for initial\n2 for building on existing tunnel\n3 for remote(not operational yet)"
@@ -42,7 +101,6 @@ if [ -z $altport ]
 then
     altport="22"
 fi
-
 
 #get the local host name
 currname=$(hostname)
@@ -78,10 +136,6 @@ while getopts “:crld” opt; do
 
             #echo "What port would you like to open on the callback machine?"
             #read rport
-
-            
-            
-
             #;;
 
 #option l creates a local tunnel
@@ -108,28 +162,14 @@ while getopts “:crld” opt; do
                     pipadd="localhost"
                 fi
 
-                echo "#!/bin/bash" > LOCAL_tmp.sh
-                echo "echo 'Opening STATIC tunnel using port $lport...'" >> LOCAL_tmp.sh
-                echo "echo 'Hostname is ${hname}'" >> LOCAL_tmp.sh
-                echo "ssh -p $altport $ipadd -L $lport:$pipadd:$pport -NT" >> LOCAL_tmp.sh
-                chmod +x LOCAL_tmp.sh
-            
-                echo "$currname:$lport ---> $hname ---> $pipadd:$pport" >> tuntable.txt
-                xterm -T "$lport-STATIC-$hname" -e 'bash LOCAL_tmp.sh | less' &
+                create_static
 
             elif [ $tunend -eq 3 ]
             then   
                 pipadd=localhost
                 pport=22
 
-                echo "#!/bin/bash" > LOCAL_tmp.sh
-                echo "echo 'Opening STATIC tunnel using port $lport...'" >> LOCAL_tmp.sh
-                echo "echo 'Hostname is ${hname}'" >> LOCAL_tmp.sh
-                echo "ssh -p $altport $ipadd -L $lport:$pipadd:$pport -NT" >> LOCAL_tmp.sh
-                chmod +x LOCAL_tmp.sh
-            
-                echo "$currname:$lport ---> $hname ---> $pipadd:$pport" >> tuntable.txt
-                xterm -T "$lport-STATIC-$hname" -e 'bash LOCAL_tmp.sh | less' &
+                create_static
             else
                 echo "What ip address will this tunnel be POINTING to? (DEFAULT: localhost)"
                 read pipadd
@@ -147,15 +187,7 @@ while getopts “:crld” opt; do
                     pipadd="localhost"
                 fi
 
-                echo "#!/bin/bash" > LOCAL_tmp.sh
-                echo "echo 'Opening PASS-THRU tunnel using port $lport...'" >> LOCAL_tmp.sh
-                echo "echo 'Pointing at $pipadd port $pport'" >> LOCAL_tmp.sh
-                echo "echo 'Hostname is ${hname}'" >> LOCAL_tmp.sh
-                echo "ssh -p $altport $ipadd -L $lport:$pipadd:$pport -NT" >> LOCAL_tmp.sh
-                chmod +x LOCAL_tmp.sh
-            
-                echo "$currname:$lport ---> $hname ---> $pipadd:$pport" >> tuntable.txt
-                xterm -T "$lport-PASS-THRU-$hname" -e 'bash LOCAL_tmp.sh | less' &
+                create_passthru
             
                 #test connection and get remote hostname
                 echo -e "\nTesting connection to $ipadd\nPlease input password in the new terminal window popup" 
@@ -163,13 +195,8 @@ while getopts “:crld” opt; do
                 hname=$(ssh -p $lport $ipadd hostname)
             
                 l2port=$((lport+1))
-                echo "#!/bin/bash" > STATIC_tmp.sh
-                echo "echo 'Port $l2port is STATIC at localhost:$pport...'" >> STATIC_tmp.sh
-                echo "echo 'Hostname is ${hname}'" >> STATIC_tmp.sh
-                echo "ssh -p $lport $ipadd -L $l2port:localhost:$pport -NT" >> STATIC_tmp.sh
-                chmod +x STATIC_tmp.sh
-                            
-                echo "$currname:$l2port ---> $hname ---> localhost:$pport" >> tuntable.txt
+
+                create_altstatic
             fi
             
 
@@ -177,15 +204,8 @@ while getopts “:crld” opt; do
             ;;
 #option d creates a dynamic connection
         d)
-
-            echo "#!/bin/bash" > DYNAMIC_tmp.sh
-            echo "echo 'Opening DYNAMIC tunnel using port $lport...'" >> DYNAMIC_tmp.sh
-            echo "echo 'Hostname is ${hname}'" >> DYNAMIC_tmp.sh
-            echo "ssh -p $altport $ipadd -D 9050 -NT" >> DYNAMIC_tmp.sh
-            chmod +x DYNAMIC_tmp.sh
-        
-            xterm -T "DYNAMIC-$lport-$hname" -e 'bash DYNAMIC_tmp.sh | less' & 
-            ;;
+            create_dynamic
+             ;;
 
 #error handling for unsupported options
         *) # unsupported flags
@@ -195,11 +215,6 @@ while getopts “:crld” opt; do
     esac
 done
 
-echo ""
-cat tuntable.txt
-echo -e "\nCleaning Up...\n"
 
-sleep 3
-rm LOCAL_tmp.sh
-rm DYNAMIC_tmp.sh
-rm STATIC_tmp.sh
+
+echo -e "\n$(cat tuntable.txt)\n"
