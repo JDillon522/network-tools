@@ -1,2 +1,0 @@
-      LOCAL HOSTNAME:PORT           |          CONNECTION ADDRESS:PORT             |       REMOTE HOSTNAME    
-
