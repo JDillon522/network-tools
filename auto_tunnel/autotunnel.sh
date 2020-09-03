@@ -189,10 +189,10 @@ while getopts “:crld” opt; do
 
                 create_passthru
 
-                echo "Preparing to create a static tunnel at the PASS-THRU box..."
+                'echo "Preparing to create a static tunnel at the PASS-THRU box..."
                 sleep 2
                 #test connection and get remote hostname
-                echo -e "\nTesting connection to $ipadd\nPlease input password in the new terminal window popup\n1) Create Static Tunnel\n2) Skip Creating Static Tunnel" 
+                echo -e "\nTesting connection to $ipadd\n\n********Please input password in the new terminal window popup before continuing! ********\n1) Create Static Tunnel\n2) Skip Creating Static Tunnel" 
                 read conyn
                 if [ $conyn -eq 1 ]
                 then
@@ -214,8 +214,8 @@ while getopts “:crld” opt; do
                     
                 fi
 
-                # l2port=$((lport+1))
-                # create_altstatic
+                l2port=$((lport+1))
+                create_altstatic'
             fi
             
 
