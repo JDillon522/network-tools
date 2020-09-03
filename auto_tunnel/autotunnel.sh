@@ -188,7 +188,7 @@ while getopts “:crld” opt; do
                 fi
 
                 create_passthru
-
+                altport=$lport
 
             fi
             
