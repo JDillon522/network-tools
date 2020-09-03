@@ -64,7 +64,7 @@ create_altstatic(){
     xterm -T "$l2port-STATIC-$hname" -e 'bash STATIC_tmp.sh | less' &
     
     sleep 1
-    #rm STATIC_tmp.sh
+    # rm STATIC_tmp.sh
 }
 
 # BEGIN ######################################################
@@ -189,6 +189,33 @@ while getopts “:crld” opt; do
 
                 create_passthru
 
+<<<<<<< HEAD
+=======
+                'echo "Preparing to create a static tunnel at the PASS-THRU box..."
+                sleep 2
+                #test connection and get remote hostname
+                echo -e "\nTesting connection to $ipadd\n\n********Please input password in the new terminal window popup before continuing! ********\n1) Create Static Tunnel\n2) Skip Creating Static Tunnel" 
+                read conyn
+                if [ $conyn -eq 1 ]
+                then
+                    hname=$(ssh -p $lport $ipadd hostname)
+                    #error handling for initial connection
+                    if [ $? -eq 0 ]
+                    then
+                        echo -e "\nSuccess: Connected to $hname\n"
+                    else
+                        echo -e "\nFailure: connection unsuccessful. Script failed\n" >&2
+                        exit 1
+                    fi
+                    
+                    l2port=$((lport+1))
+                    create_altstatic    
+                else
+                    echo -e "\n$(cat tuntable.txt)\n"
+                    # exit 1
+                    
+                fi
+>>>>>>> d3b433990c651e86a54a3067e9ea0768e3ed9f0e
 
             fi
             

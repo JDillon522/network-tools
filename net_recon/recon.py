@@ -77,7 +77,7 @@ ports = input('4) Enter ports space-delimited (e.g. 20 21 22 23 80): ') or '20 2
 interval_step = input('5) Enter the batch size for parallel execution. (default: 25)\n   (note: the larger the batch size, the more likely the target IP \n   will be unable to handle requests and drop connections.)') or '25'
 interval_step = int(interval_step)
 # TODO add validation
-pause_time = input('6) Enter the desired pause time in seconds between intervals to \n   try and preventtoo many open ssh connections. (defaults to 10) ') or '5'
+pause_time = input('6) Enter the desired pause time in seconds between intervals to \n   try and preventtoo many open ssh connections. (defaults to 5) ') or '5'
 pause_time = int(pause_time)
 # TODO add validation
 download_requests = input('7) Do you want to automatically download wget and ftp requests to your box? (default: yes)') or 'yes'
@@ -85,6 +85,22 @@ if download_requests == 'yes':
 	download_requests = True
 else:
 	download_requests = False
+
+# TODO add validation
+nmap_found_ips = input('8) Do you want to conduct a full scan of all 65535 ports on found addresses after the\nscan is complete? (default: no)') or 'no'
+if nmap_found_ips == 'yes':
+	nmap_found_ips = True
+else:
+	nmap_found_ips = False
+valid_ips = []
+
+print('\nNetwork: {}.xxx'.format(net))
+print('Range: {} - {}'.format(start, end))
+print('Ports: {}'.format(ports))
+print('Interval Step: {}'.format(interval_step))
+print('Pause Time: {} seconds'.format(pause_time))
+print('Download WGET and FTP: {}'.format(download_requests))
+print('Run NMAP: {}\n'.format(nmap_found_ips))
 
 # Build intervals in steps of 5
 for i in range(0, int(end), interval_step):
@@ -108,23 +124,32 @@ def analyze_results(i, nc):
 	if 'open' in nc:
 		ftp_data = ''
 		wget_data = ''
+		ip = '{}.{}'.format(net, i)
 
 		formatted = format_output(i, nc)
 		# TODO if there is an open port on 80 or 23, go ahead and make a wget request
 		# TODO if there is an active machine go ahead and scan for higher ports
 		if '21 (ftp)' in formatted:
-			ftp_data = wget_ftp('{}.{}'.format(net, i))
+			ftp_data = wget_ftp(ip)
 
 		if '80 (http)' in formatted:
-			wget_data = wget_http('{}.{}'.format(net, i))
+			wget_data = wget_http(ip)
 	
 		results.append('-------- IP: {}.{} ----------------\n{}'.format(net, i, formatted + ftp_data + '\n' + wget_data))
+		valid_ips.append(ip)
 
 	tick_counters()
 
 def run_nmap(ip):
-	# nmap -sV --script=banner 172.20.20.16
-	pass
+	print('---- Mapping Ports on: {}'.format(ip))
+	nmap_args = ['nmap', '-T4', '-p 1-65535', ip]
+	nmap_res = sub.Popen(nmap_args, stdout=sub.PIPE, stderr=sub.PIPE, universal_newlines=True)
+	
+	nmap_res.wait()
+	out, err = nmap_res.communicate()
+	print('OUT', out)
+	print('ERROR', err)
+	nmap_res.kill()
 
 
 def wget_http(ip):
@@ -242,3 +267,15 @@ print('\n-------- Final Rollup --------------------')
 print('-------- Total Scan Time: {} ----------'.format(time.strftime("%M:%S", time.gmtime(time1))))
 for res in results:
 	print(res)
+
+
+
+if nmap_found_ips:
+	nmp_processes = []
+
+	print('\n------ Scanning Found IPs for all ports ------')
+	print('...... this will take some time....')
+
+	for ip in valid_ips:
+		run_nmap(ip)
+		
