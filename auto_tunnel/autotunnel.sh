@@ -64,11 +64,7 @@ create_altstatic(){
     xterm -T "$l2port-STATIC-$hname" -e 'bash STATIC_tmp.sh | less' &
     
     sleep 1
-<<<<<<< HEAD
-    # rm STATIC_tmp.sh
-=======
     #rm STATIC_tmp.sh
->>>>>>> 34a03a82555067c4b931562043eb16948eb16e85
 }
 
 # BEGIN ######################################################
@@ -193,10 +189,10 @@ while getopts “:crld” opt; do
 
                 create_passthru
 
-                echo "Preparing to create a static tunnel at the PASS-THRU box..."
+                'echo "Preparing to create a static tunnel at the PASS-THRU box..."
                 sleep 2
                 #test connection and get remote hostname
-                echo -e "\nTesting connection to $ipadd\nPlease input password in the new terminal window popup\n1) Create Static Tunnel\n2) Skip Creating Static Tunnel" 
+                echo -e "\nTesting connection to $ipadd\n\n********Please input password in the new terminal window popup before continuing! ********\n1) Create Static Tunnel\n2) Skip Creating Static Tunnel" 
                 read conyn
                 if [ $conyn -eq 1 ]
                 then
@@ -215,7 +211,7 @@ while getopts “:crld” opt; do
                 fi
 
                 l2port=$((lport+1))
-                create_altstatic
+                create_altstatic'
             fi
             
 
