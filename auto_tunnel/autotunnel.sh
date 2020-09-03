@@ -206,6 +206,7 @@ while getopts “:crld” opt; do
                         exit 1
                     fi
                 else
+                    echo -e "\n$(cat tuntable.txt)\n"
                     exit 1
                 fi
 
