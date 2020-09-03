@@ -64,11 +64,7 @@ create_altstatic(){
     xterm -T "$l2port-STATIC-$hname" -e 'bash STATIC_tmp.sh | less' &
     
     sleep 1
-<<<<<<< HEAD
     # rm STATIC_tmp.sh
-=======
-    #rm STATIC_tmp.sh
->>>>>>> 34a03a82555067c4b931562043eb16948eb16e85
 }
 
 # BEGIN ######################################################
@@ -209,13 +205,17 @@ while getopts “:crld” opt; do
                         echo -e "\nFailure: connection unsuccessful. Script failed\n" >&2
                         exit 1
                     fi
+                    
+                    l2port=$((lport+1))
+                    create_altstatic    
                 else
                     echo -e "\n$(cat tuntable.txt)\n"
-                    exit 1
+                    # exit 1
+                    
                 fi
 
-                l2port=$((lport+1))
-                create_altstatic
+                # l2port=$((lport+1))
+                # create_altstatic
             fi
             
 

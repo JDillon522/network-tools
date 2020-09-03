@@ -77,7 +77,7 @@ ports = input('4) Enter ports space-delimited (e.g. 20 21 22 23 80): ') or '20 2
 interval_step = input('5) Enter the batch size for parallel execution. (default: 25)\n   (note: the larger the batch size, the more likely the target IP \n   will be unable to handle requests and drop connections.)') or '25'
 interval_step = int(interval_step)
 # TODO add validation
-pause_time = input('6) Enter the desired pause time in seconds between intervals to \n   try and preventtoo many open ssh connections. (defaults to 10) ') or '5'
+pause_time = input('6) Enter the desired pause time in seconds between intervals to \n   try and preventtoo many open ssh connections. (defaults to 5) ') or '5'
 pause_time = int(pause_time)
 # TODO add validation
 download_requests = input('7) Do you want to automatically download wget and ftp requests to your box? (default: yes)') or 'yes'
