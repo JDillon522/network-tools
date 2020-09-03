@@ -77,7 +77,7 @@ ports = input('4) Enter ports space-delimited (e.g. 20 21 22 23 80): ') or '20 2
 interval_step = input('5) Enter the batch size for parallel execution. (default: 25)\n   (note: the larger the batch size, the more likely the target IP \n   will be unable to handle requests and drop connections.)') or '25'
 interval_step = int(interval_step)
 # TODO add validation
-pause_time = input('6) Enter the desired pause time in seconds between intervals to \n   try and preventtoo many open ssh connections. (defaults to 10) ') or '10'
+pause_time = input('6) Enter the desired pause time in seconds between intervals to \n   try and preventtoo many open ssh connections. (defaults to 10) ') or '5'
 pause_time = int(pause_time)
 # TODO add validation
 download_requests = input('7) Do you want to automatically download wget and ftp requests to your box? (default: yes)') or 'yes'
@@ -121,6 +121,11 @@ def analyze_results(i, nc):
 		results.append('-------- IP: {}.{} ----------------\n{}'.format(net, i, formatted + ftp_data + '\n' + wget_data))
 
 	tick_counters()
+
+def run_nmap(ip):
+	# nmap -sV --script=banner 172.20.20.16
+	pass
+
 
 def wget_http(ip):
 	wget_args = ['wget', '-qO-', ip]
@@ -204,7 +209,7 @@ def tick_counters():
 	
 def execute_interval(interval):
 	print('Running scans on IPs {}.{} to {}.{} in parallel....'.format(net, interval[0], net, interval[1]))
-
+	print('INTERVAL', interval)
 	for i in range(interval[0], interval[1]):
 		# (-v) running verbosely (-v on Linux, -vv on Windows),
 		# (-n) not resolving names. numeric only IP(no D.S)
@@ -227,6 +232,7 @@ def execute_interval(interval):
 		proc[1].wait()
 		nc_out, nc_errs = proc[1].communicate()
 		analyze_results(proc[0], nc_errs)
+		proc[1].kill()
 
 print('\nAll your IPs are belong to us...\n')
 execute_interval(intervals[interval_execution_index])

@@ -20,8 +20,8 @@ create_dynamic(){
         
     xterm -T "DYNAMIC-$altport-$hname" -e 'bash DYNAMIC_tmp.sh | less' & 
 
-sleep 1
-rm DYNAMIC_tmp.sh
+    sleep 1
+    # rm DYNAMIC_tmp.sh
 
 }
 create_static(){
@@ -34,8 +34,8 @@ create_static(){
     echo "$currname:$lport ---> $hname ---> $pipadd:$pport" >> tuntable.txt
     xterm -T "$lport-STATIC-$hname" -e 'bash LOCAL_tmp.sh | less' &
 
-sleep 1
-rm LOCAL_tmp.sh
+    sleep 1
+    # rm LOCAL_tmp.sh
 
 }
 create_passthru(){
@@ -50,7 +50,7 @@ create_passthru(){
     xterm -T "$lport-PASS-THRU-$hname" -e 'bash LOCAL_tmp.sh | less' &
 
     sleep 1
-    rm LOCAL_tmp.sh
+    # rm LOCAL_tmp.sh
 
 }
 create_altstatic(){
@@ -64,7 +64,7 @@ create_altstatic(){
     xterm -T "$l2port-STATIC-$hname" -e 'bash STATIC_tmp.sh | less' &
     
     sleep 1
-    rm STATIC_tmp.sh
+    # rm STATIC_tmp.sh
 }
 
 # BEGIN ######################################################
