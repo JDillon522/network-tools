@@ -13,12 +13,12 @@
 # FUNCTIONS  ################################################
 create_dynamic(){
     echo "#!/bin/bash" > DYNAMIC_tmp.sh
-    echo "echo 'Opening DYNAMIC tunnel using port $lport...'" >> DYNAMIC_tmp.sh
+    echo "echo 'Opening DYNAMIC tunnel using port $altport...'" >> DYNAMIC_tmp.sh
     echo "echo 'Hostname is $hname'" >> DYNAMIC_tmp.sh
     echo "ssh -p $altport $ipadd -D 9050 -NT" >> DYNAMIC_tmp.sh
     chmod +x DYNAMIC_tmp.sh
         
-    xterm -T "DYNAMIC-$lport-$hname" -e 'bash DYNAMIC_tmp.sh | less' & 
+    xterm -T "DYNAMIC-$altport-$hname" -e 'bash DYNAMIC_tmp.sh | less' & 
 
 sleep 1
 rm DYNAMIC_tmp.sh
@@ -61,7 +61,7 @@ create_altstatic(){
     chmod +x STATIC_tmp.sh
                             
     echo "$currname:$l2port ---> $hname ---> localhost:$pport" >> tuntable.txt
-    xterm -T "$lport-STATIC-$hname" -e 'bash STATIC_tmp.sh | less' &
+    xterm -T "$l2port-STATIC-$hname" -e 'bash STATIC_tmp.sh | less' &
     
     sleep 1
     rm STATIC_tmp.sh
@@ -188,14 +188,28 @@ while getopts “:crld” opt; do
                 fi
 
                 create_passthru
-            
-                #test connection and get remote hostname
-                echo -e "\nTesting connection to $ipadd\nPlease input password in the new terminal window popup" 
-                sleep 11
-                hname=$(ssh -p $lport $ipadd hostname)
-            
-                l2port=$((lport+1))
 
+                echo "Preparing to create a static tunnel at the PASS-THRU box..."
+                sleep 2
+                #test connection and get remote hostname
+                echo -e "\nTesting connection to $ipadd\nPlease input password in the new terminal window popup\n1) Create Static Tunnel\n2) Skip Creating Static Tunnel" 
+                read conyn
+                if [ $conyn -eq 1 ]
+                then
+                    hname=$(ssh -p $lport $ipadd hostname)
+                    #error handling for initial connection
+                    if [ $? -eq 0 ]
+                    then
+                        echo -e "\nSuccess: Connected to $hname\n"
+                    else
+                        echo -e "\nFailure: connection unsuccessful. Script failed\n" >&2
+                        exit 1
+                    fi
+                else
+                    exit 1
+                fi
+
+                l2port=$((lport+1))
                 create_altstatic
             fi
             
