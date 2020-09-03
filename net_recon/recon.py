@@ -86,6 +86,22 @@ if download_requests == 'yes':
 else:
 	download_requests = False
 
+# TODO add validation
+nmap_found_ips = input('8) Do you want to conduct a full scan of all 65535 ports on found addresses after the\nscan is complete? (default: no)') or 'no'
+if nmap_found_ips == 'yes':
+	nmap_found_ips = True
+else:
+	nmap_found_ips = False
+valid_ips = []
+
+print('\nNetwork: {}.xxx'.format(net))
+print('Range: {} - {}'.format(start, end))
+print('Ports: {}'.format(ports))
+print('Interval Step: {}'.format(interval_step))
+print('Pause Time: {} seconds'.format(pause_time))
+print('Download WGET and FTP: {}'.format(download_requests))
+print('Run NMAP: {}\n'.format(nmap_found_ips))
+
 # Build intervals in steps of 5
 for i in range(0, int(end), interval_step):
 	start_range = i + 1
@@ -108,23 +124,32 @@ def analyze_results(i, nc):
 	if 'open' in nc:
 		ftp_data = ''
 		wget_data = ''
+		ip = '{}.{}'.format(net, i)
 
 		formatted = format_output(i, nc)
 		# TODO if there is an open port on 80 or 23, go ahead and make a wget request
 		# TODO if there is an active machine go ahead and scan for higher ports
 		if '21 (ftp)' in formatted:
-			ftp_data = wget_ftp('{}.{}'.format(net, i))
+			ftp_data = wget_ftp(ip)
 
 		if '80 (http)' in formatted:
-			wget_data = wget_http('{}.{}'.format(net, i))
+			wget_data = wget_http(ip)
 	
 		results.append('-------- IP: {}.{} ----------------\n{}'.format(net, i, formatted + ftp_data + '\n' + wget_data))
+		valid_ips.append(ip)
 
 	tick_counters()
 
 def run_nmap(ip):
-	# nmap -sV --script=banner 172.20.20.16
-	pass
+	print('---- Mapping Ports on: {}'.format(ip))
+	nmap_args = ['nmap', '-T4', '-p 1-65535', ip]
+	nmap_res = sub.Popen(nmap_args, stdout=sub.PIPE, stderr=sub.PIPE, universal_newlines=True)
+	
+	nmap_res.wait()
+	out, err = nmap_res.communicate()
+	print('OUT', out)
+	print('ERROR', err)
+	nmap_res.kill()
 
 
 def wget_http(ip):
@@ -242,3 +267,15 @@ print('\n-------- Final Rollup --------------------')
 print('-------- Total Scan Time: {} ----------'.format(time.strftime("%M:%S", time.gmtime(time1))))
 for res in results:
 	print(res)
+
+
+
+if nmap_found_ips:
+	nmp_processes = []
+
+	print('\n------ Scanning Found IPs for all ports ------')
+	print('...... this will take some time....')
+
+	for ip in valid_ips:
+		run_nmap(ip)
+		
