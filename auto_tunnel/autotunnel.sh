@@ -12,19 +12,26 @@
 
 # FUNCTIONS  ################################################
 create_dynamic(){
+
+    while ! nc -z localhost $l2port
+    do
+        echo "Waiting for tunnel to open....."
+        sleep 4
+    done
+
     echo "#!/bin/bash" > DYNAMIC_tmp.sh
-    echo "echo 'Opening DYNAMIC tunnel using port $altport...'" >> DYNAMIC_tmp.sh
+    echo "echo 'Opening DYNAMIC tunnel using port $l2port...'" >> DYNAMIC_tmp.sh
     echo "echo 'Hostname is $hname'" >> DYNAMIC_tmp.sh
-    echo "ssh -p $altport $ipadd -D 9050 -NT" >> DYNAMIC_tmp.sh
+    echo "ssh -p $l2port $ipadd -D 9050 -NT" >> DYNAMIC_tmp.sh
     chmod +x DYNAMIC_tmp.sh
         
-    xterm -T "DYNAMIC-$altport-$hname" -e 'bash DYNAMIC_tmp.sh | less' & 
+    xterm -T "DYNAMIC-$l2port-$hname" -e 'bash DYNAMIC_tmp.sh | less' & 
 
-    sleep 1
-    # rm DYNAMIC_tmp.sh
+    #rm DYNAMIC_tmp.sh
 
 }
 create_static(){
+    
     echo "#!/bin/bash" > LOCAL_tmp.sh
     echo "echo 'Opening STATIC tunnel using port $lport...'" >> LOCAL_tmp.sh
     echo "echo 'Hostname is ${hname}'" >> LOCAL_tmp.sh
@@ -34,8 +41,12 @@ create_static(){
     echo "$currname:$lport ---> $hname ---> $pipadd:$pport" >> tuntable.txt
     xterm -T "$lport-STATIC-$hname" -e 'bash LOCAL_tmp.sh | less' &
 
-    sleep 1
-    # rm LOCAL_tmp.sh
+    while ! nc -z localhost $lport
+    do
+        sleep 0.01
+    done
+
+    #rm $lport_LOCAL_tmp.sh
 
 }
 create_passthru(){
@@ -49,8 +60,11 @@ create_passthru(){
     echo "$currname:$lport ---> $hname ---> $pipadd:$pport" >> tuntable.txt
     xterm -T "$lport-PASS-THRU-$hname" -e 'bash LOCAL_tmp.sh | less' &
 
-    sleep 1
-    # rm LOCAL_tmp.sh
+    while ! nc -z localhost $lport
+    do
+        sleep 0.01
+    done
+    #rm $lport_LOCAL_tmp.sh
 
 }
 create_altstatic(){
@@ -81,11 +95,13 @@ create_altstatic(){
         #retrieve ssh port to use
         echo "What SSH port should be used to log into $ipadd? (DEFAULT: 22)"
         read altport
+
     elif [ $scen -eq 3 ]
     then
         echo "WARNING: The rest of this script assumes that you've already set up a tunnel pointing at the telnet port of the remote machine"
         echo "What port is the correct tunnel using?"
         read altport
+        l2port=$altport
     else
         #retrieve username and ip address
         echo "Please input username"
@@ -95,6 +111,7 @@ create_altstatic(){
         #retrieve ssh port to use
         echo "What port is your tunnel using?"
         read altport
+        l2port=$altport
     fi
 
     if [ -z $altport ]
@@ -104,7 +121,7 @@ create_altstatic(){
 
     #get the local host name
     currname=$(hostname)
-
+    
     #test connection and get remote hostname
     echo -e "\nTesting connection to $ipadd\n" 
     hname=$(ssh -p $altport $ipadd hostname)
@@ -188,7 +205,7 @@ while getopts “:crld” opt; do
                 fi
 
                 create_passthru
-                altport=$lport
+                l2port=$lport
 
             fi
             
@@ -197,6 +214,7 @@ while getopts “:crld” opt; do
             ;;
 #option d creates a dynamic connection
         d)
+            
             create_dynamic
              ;;
 
