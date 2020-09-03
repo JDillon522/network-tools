@@ -64,7 +64,11 @@ create_altstatic(){
     xterm -T "$l2port-STATIC-$hname" -e 'bash STATIC_tmp.sh | less' &
     
     sleep 1
+<<<<<<< HEAD
     # rm STATIC_tmp.sh
+=======
+    #rm STATIC_tmp.sh
+>>>>>>> 34a03a82555067c4b931562043eb16948eb16e85
 }
 
 # BEGIN ######################################################
