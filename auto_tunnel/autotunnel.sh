@@ -68,55 +68,55 @@ create_altstatic(){
 }
 
 # BEGIN ######################################################
-#what's the scenario?
-echo "Are you creating an initial tunnel, building upon another, or creating a remote tunnel?"
-echo -e "1 for initial\n2 for building on existing tunnel\n3 for remote(not operational yet)"
-read scen
-if [ $scen -eq 1 ]
-then
-    #retrieve username and ip address
-    echo "Please input: <user>@<ipaddress>"
-    read ipadd
+    #what's the scenario?
+    echo "Are you creating an initial tunnel, building upon another, or creating a remote tunnel?"
+    echo -e "1 for initial\n2 for building on existing tunnel\n3 for remote(not operational yet)"
+    read scen
+    if [ $scen -eq 1 ]
+    then
+        #retrieve username and ip address
+        echo "Please input: <user>@<ipaddress>"
+        read ipadd
 
-    #retrieve ssh port to use
-    echo "What SSH port should be used to log into $ipadd? (DEFAULT: 22)"
-    read altport
-elif [ $scen -eq 3 ]
-then
-    echo "WARNING: The rest of this script assumes that you've already set up a tunnel pointing at the telnet port of the remote machine"
-    echo "What port is the correct tunnel using?"
-    read altport
-else
-    #retrieve username and ip address
-    echo "Please input username"
-    read uname
-    ipadd=$uname@localhost
+        #retrieve ssh port to use
+        echo "What SSH port should be used to log into $ipadd? (DEFAULT: 22)"
+        read altport
+    elif [ $scen -eq 3 ]
+    then
+        echo "WARNING: The rest of this script assumes that you've already set up a tunnel pointing at the telnet port of the remote machine"
+        echo "What port is the correct tunnel using?"
+        read altport
+    else
+        #retrieve username and ip address
+        echo "Please input username"
+        read uname
+        ipadd=$uname@localhost
 
-    #retrieve ssh port to use
-    echo "What port is your tunnel using?"
-    read altport
-fi
+        #retrieve ssh port to use
+        echo "What port is your tunnel using?"
+        read altport
+    fi
 
-if [ -z $altport ]
-then
-    altport="22"
-fi
+    if [ -z $altport ]
+    then
+        altport="22"
+    fi
 
-#get the local host name
-currname=$(hostname)
+    #get the local host name
+    currname=$(hostname)
 
-#test connection and get remote hostname
-echo -e "\nTesting connection to $ipadd\n" 
-hname=$(ssh -p $altport $ipadd hostname)
+    #test connection and get remote hostname
+    echo -e "\nTesting connection to $ipadd\n" 
+    hname=$(ssh -p $altport $ipadd hostname)
 
-#error handling for initial connection
-if [ $? -eq 0 ]
-then
-    echo -e "\nSuccess: Connected to $hname\n"
-else
-    echo -e "\nFailure: connection unsuccessful. Script failed\n" >&2
-    exit 1
-fi
+    #error handling for initial connection
+    if [ $? -eq 0 ]
+    then
+        echo -e "\nSuccess: Connected to $hname\n"
+    else
+        echo -e "\nFailure: connection unsuccessful. Script failed\n" >&2
+        exit 1
+    fi
 
 #handle options
 while getopts “:crld” opt; do
@@ -189,29 +189,7 @@ while getopts “:crld” opt; do
 
                 create_passthru
 
-                'echo "Preparing to create a static tunnel at the PASS-THRU box..."
-                sleep 2
-                #test connection and get remote hostname
-                echo -e "\nTesting connection to $ipadd\n\n********Please input password in the new terminal window popup before continuing! ********\n1) Create Static Tunnel\n2) Skip Creating Static Tunnel" 
-                read conyn
-                if [ $conyn -eq 1 ]
-                then
-                    hname=$(ssh -p $lport $ipadd hostname)
-                    #error handling for initial connection
-                    if [ $? -eq 0 ]
-                    then
-                        echo -e "\nSuccess: Connected to $hname\n"
-                    else
-                        echo -e "\nFailure: connection unsuccessful. Script failed\n" >&2
-                        exit 1
-                    fi
-                else
-                    echo -e "\n$(cat tuntable.txt)\n"
-                    exit 1
-                fi
 
-                l2port=$((lport+1))
-                create_altstatic'
             fi
             
 
@@ -231,5 +209,6 @@ while getopts “:crld” opt; do
 done
 
 
+    echo -e "\n$(cat tuntable.txt)\n"
 
-echo -e "\n$(cat tuntable.txt)\n"
+
