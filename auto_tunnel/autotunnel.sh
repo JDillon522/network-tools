@@ -50,11 +50,23 @@ create_static(){
 
 }
 create_passthru(){
-    echo "#!/bin/bash" > LOCAL_tmp.sh
-    echo "echo 'Opening PASS-THRU tunnel using port $lport...'" >> LOCAL_tmp.sh
-    echo "echo 'Pointing at $pipadd port $pport'" >> LOCAL_tmp.sh
-    echo "echo 'Hostname is ${hname}'" >> LOCAL_tmp.sh
-    echo "ssh -p $altport $ipadd -L $lport:$pipadd:$pport -NT" >> LOCAL_tmp.sh
+    echo "#!/bin/bash
+    echo 'Opening PASS-THRU tunnel using port $lport...'
+    echo 'Pointing at $pipadd port $pport'
+    echo 'Hostname is ${hname}'
+    if [ $pport -eq 23 ]
+    then
+        echo \"while ! nc -z localhost $lport
+        do
+            echo \"Waiting for telnet Connection to $pipadd...\"
+            sleep 2
+        done
+        telnet localhost $lport \"  > TELNET_tmp.sh
+        chmod +x TELNET_tmp.sh
+        xterm -T \"$lport-TELNET-$hname\" -e \"bash TELNET_tmp.sh \" &
+    fi
+    ssh -p $altport $ipadd -L $lport:$pipadd:$pport -NT
+    " > LOCAL_tmp.sh
     chmod +x LOCAL_tmp.sh
             
     echo "$currname:$lport ---> $hname ---> $pipadd:$pport" >> tuntable.txt
@@ -124,15 +136,15 @@ create_altstatic(){
     
     #test connection and get remote hostname
     echo -e "\nTesting connection to $ipadd\n" 
-    hname=$(ssh -p $altport $ipadd hostname)
+    hname=$(ssh -p $altport $ipadd -o ConnectTimeout=1 -o ConnectionAttempts=5 hostname)
 
     #error handling for initial connection
     if [ $? -eq 0 ]
     then
         echo -e "\nSuccess: Connected to $hname\n"
     else
-        echo -e "\nFailure: connection unsuccessful. Script failed\n" >&2
-        exit 1
+        echo -e "\nFailure: connection unsuccessful. Maybe not an SSH connection?\n" >&2
+        hname="UNKNOWN"
     fi
 
 #handle options
@@ -160,7 +172,10 @@ while getopts “:crld” opt; do
             echo "What local port would you like to open?"
             read lport
             
-            echo -e "Will this tunnel be ending in this box, or pointing to another?)\n1 for ending here\n2 for pointing onwards\n3 to set the standard loopback of localhost:22"
+            echo -e "Will this tunnel be ending in this box, or pointing to another?)
+                    \n1 to end the tunnel here with a custom loopback port (ie: 5555)
+                    \n2 for pointing onwards
+                    \n3 to loopback to this box's localhost:22"
             read tunend
             
             #set remote ip address to localhost if yes, or prompt for other if no
@@ -169,6 +184,7 @@ while getopts “:crld” opt; do
                 pipadd=localhost
                 echo "Finally, what port is this tunnel pointing to at $pipadd? (DEFAULT: 22)"
                 read pport
+
                 if [ -z $pport ]
                 then
                     pport="22"
@@ -206,6 +222,8 @@ while getopts “:crld” opt; do
 
                 create_passthru
                 l2port=$lport
+
+                
 
             fi
             
