@@ -27,6 +27,7 @@ create_dynamic(){
         
     xterm -T "DYNAMIC-$l2port-$hname" -e 'bash DYNAMIC_tmp.sh | less' & 
 
+ 
     #rm DYNAMIC_tmp.sh
 
 }
@@ -63,6 +64,7 @@ create_passthru(){
         done
         telnet localhost $lport \"  > TELNET_tmp.sh
         chmod +x TELNET_tmp.sh
+        echo \"$currname:$lport ---> $hname ---> TELNET-FOR-REVERSE\" >> tuntable.txt
         xterm -T \"$lport-TELNET-$hname\" -e \"bash TELNET_tmp.sh \" &
     fi
     ssh -p $altport $ipadd -L $lport:$pipadd:$pport -NT
@@ -95,17 +97,17 @@ create_altstatic(){
 
 # BEGIN ######################################################
     #what's the scenario?
-    echo "Are you creating an initial tunnel, building upon another, or creating a remote tunnel?"
+    echo -e "\nAre you creating an initial tunnel, building upon another, or creating a remote tunnel?"
     echo -e "1 for initial\n2 for building on existing tunnel\n3 for remote(not operational yet)"
     read scen
     if [ $scen -eq 1 ]
     then
         #retrieve username and ip address
-        echo "Please input: <user>@<ipaddress>"
+        echo -e "\nPlease input: <user>@<ipaddress>"
         read ipadd
 
         #retrieve ssh port to use
-        echo "What SSH port should be used to log into $ipadd? (DEFAULT: 22)"
+        echo -e "\nWhat SSH port should be used to log into $ipadd? (DEFAULT: 22)"
         read altport
 
     elif [ $scen -eq 3 ]
@@ -116,12 +118,12 @@ create_altstatic(){
         l2port=$altport
     else
         #retrieve username and ip address
-        echo "Please input username"
+        echo -e "\nPlease input username"
         read uname
         ipadd=$uname@localhost
 
         #retrieve ssh port to use
-        echo "What port is your tunnel using?"
+        echo -e "\nWhat port is your tunnel using?"
         read altport
         l2port=$altport
     fi
@@ -169,20 +171,20 @@ while getopts “:crld” opt; do
 
 #option l creates a local tunnel
         l)
-            echo "What local port would you like to open?"
+            echo -e "\nWhat local port would you like to open?"
             read lport
             
-            echo -e "Will this tunnel be ending in this box, or pointing to another?)
-                    \n1 to end the tunnel here with a custom loopback port (ie: 5555)
-                    \n2 for pointing onwards
-                    \n3 to loopback to this box's localhost:22"
+            echo -e "\nWill this tunnel be ending in this box, or pointing to another?)
+                    1 to end the tunnel here with a custom loopback port (ie: 5555)
+                    2 for pointing onwards
+                    3 to loopback to this box's localhost:22"
             read tunend
             
             #set remote ip address to localhost if yes, or prompt for other if no
             if [ $tunend -eq 1 ]
             then
                 pipadd=localhost
-                echo "Finally, what port is this tunnel pointing to at $pipadd? (DEFAULT: 22)"
+                echo -e "\nFinally, what port is this tunnel pointing to at $pipadd? (DEFAULT: 22)"
                 read pport
 
                 if [ -z $pport ]
@@ -204,10 +206,10 @@ while getopts “:crld” opt; do
 
                 create_static
             else
-                echo "What ip address will this tunnel be POINTING to? (DEFAULT: localhost)"
+                echo -e "\nWhat ip address will this tunnel be POINTING to? (DEFAULT: localhost)"
                 read pipadd
 
-                echo "Finally, what port is this tunnel pointing to at $pipadd? (DEFAULT: 22)"
+                echo -e "\nFinally, what port is this tunnel pointing to at $pipadd? (DEFAULT: 22)"
                 read pport
             
                 if [ -z $pport ]
