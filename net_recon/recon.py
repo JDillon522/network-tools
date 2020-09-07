@@ -103,7 +103,7 @@ print('Download WGET and FTP: {}'.format(download_requests))
 print('Run NMAP: {}\n'.format(nmap_found_ips))
 
 # Build intervals in steps of 5
-for i in range(0, int(end), interval_step):
+for i in range(int(start), int(end), interval_step):
 	start_range = i + 1
 
 	if len(intervals) > 0:
