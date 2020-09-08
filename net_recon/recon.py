@@ -109,6 +109,8 @@ for i in range(int(start), int(end), interval_step):
 	if len(intervals) > 0:
 		start_range = intervals[interval_creation_i][1] + 1
 		interval_creation_i += 1
+	else:
+		start_range = i
 
 	end_range = start_range + interval_step
 	if end_range > int(end):
