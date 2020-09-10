@@ -25,7 +25,7 @@ create_dynamic(){
     echo "ssh -p $l2port $ipadd -D 9050 -NT" >> DYNAMIC_tmp.sh
     chmod +x DYNAMIC_tmp.sh
         
-    xterm -T "DYNAMIC-$l2port-$hname" -e 'bash DYNAMIC_tmp.sh | less' & 
+    terminator -T "DYNAMIC-$l2port-$hname" -e 'bash DYNAMIC_tmp.sh | less' & 
 
  
     #rm DYNAMIC_tmp.sh
@@ -40,7 +40,7 @@ create_static(){
     chmod +x LOCAL_tmp.sh
             
     echo "$currname:$lport ---> $hname ---> $pipadd:$pport" >> tuntable.txt
-    xterm -T "$lport-STATIC-$hname" -e 'bash LOCAL_tmp.sh | less' &
+    terminator -T "$lport-STATIC-$hname" -e 'bash LOCAL_tmp.sh | less' &
 
     while ! nc -z localhost $lport
     do
@@ -65,14 +65,14 @@ create_passthru(){
         telnet localhost $lport \"  > TELNET_tmp.sh
         chmod +x TELNET_tmp.sh
         echo \"$currname:$lport ---> $hname ---> TELNET-FOR-REVERSE\" >> tuntable.txt
-        xterm -T \"$lport-TELNET-$hname\" -e \"bash TELNET_tmp.sh \" &
+        terminator -T \"$lport-TELNET-$hname\" -e \"bash TELNET_tmp.sh \" &
     fi
     ssh -p $altport $ipadd -L $lport:$pipadd:$pport -NT
     " > LOCAL_tmp.sh
     chmod +x LOCAL_tmp.sh
             
     echo "$currname:$lport ---> $hname ---> $pipadd:$pport" >> tuntable.txt
-    xterm -T "$lport-PASS-THRU-$hname" -e 'bash LOCAL_tmp.sh | less' &
+    terminator -T "$lport-PASS-THRU-$hname" -e 'bash LOCAL_tmp.sh | less' &
 
     while ! nc -z localhost $lport
     do
@@ -89,7 +89,7 @@ create_altstatic(){
     chmod +x STATIC_tmp.sh
                             
     echo "$currname:$l2port ---> $hname ---> localhost:$pport" >> tuntable.txt
-    xterm -T "$l2port-STATIC-$hname" -e 'bash STATIC_tmp.sh | less' &
+    terminator -T "$l2port-STATIC-$hname" -e 'bash STATIC_tmp.sh | less' &
     
     sleep 1
     #rm STATIC_tmp.sh
