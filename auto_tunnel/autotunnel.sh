@@ -109,12 +109,21 @@ create_altstatic(){
         #retrieve ssh port to use
         echo -e "\nWhat SSH port should be used to log into $ipadd? (DEFAULT: 22)"
         read altport
+                if [ -z $altport ]
+        then
+            altport="22"
+        fi
+        l2port=$altport
 
     elif [ $scen -eq 3 ]
     then
         echo "WARNING: The rest of this script assumes that you've already set up a tunnel pointing at the telnet port of the remote machine"
         echo "What port is the correct tunnel using?"
         read altport
+        if [ -z $altport ]
+        then
+            altport="22"
+        fi
         l2port=$altport
     else
         #retrieve username and ip address
@@ -125,12 +134,11 @@ create_altstatic(){
         #retrieve ssh port to use
         echo -e "\nWhat port is your tunnel using?"
         read altport
+                if [ -z $altport ]
+        then
+            altport="22"
+        fi
         l2port=$altport
-    fi
-
-    if [ -z $altport ]
-    then
-        altport="22"
     fi
 
     #get the local host name
@@ -138,7 +146,7 @@ create_altstatic(){
     
     #test connection and get remote hostname
     echo -e "\nTesting connection to $ipadd\n" 
-    hname=$(ssh -p $altport $ipadd -o ConnectTimeout=1 -o ConnectionAttempts=5 hostname)
+    hname=$(ssh -p $altport $ipadd -o ConnectTimeout=5 -o ConnectionAttempts=10 hostname)
 
     #error handling for initial connection
     if [ $? -eq 0 ]
@@ -205,6 +213,7 @@ while getopts “:crld” opt; do
                 pport=22
 
                 create_static
+                l2port=$lport
             else
                 echo -e "\nWhat ip address will this tunnel be POINTING to? (DEFAULT: localhost)"
                 read pipadd
