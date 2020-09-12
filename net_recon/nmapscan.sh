@@ -8,43 +8,9 @@
 # Description:
 #
 ########################################################################
-function cleanup(){ ## Cleanup function for exiting
-
-    echo "Cleaning up and exiting Script..."
-    proc_pid=$$
-    echo "Killing children..."
-
-    for i in $(ps -elf | awk '{if ($5 == $proc_pid) {print $4}}')
-    do
-        kill -9 $i
-    done
-    
-    echo "Killing orphans..."
-    sleep 4
-    for i in $(ps -elf | awk '{if ($5 == 1 && $3 == "student") {print $4}}')
-    do
-        kill -9 $i
-    done
-    sleep 2
-    
-    echo "Removing temporary files..."
-    if [ -f "tcplog.txt" ]
-    then
-        rm tcplog.txt
-    fi
-    if [ -f "prog.txt" ]
-    then
-        rm prog.txt
-    fi
-    kill -9 $$
-}
-trap cleanup SIGINT EXIT ## trap CTRL-C and Exit signals
-
-##Create temp files
 echo "" > tcplog.txt
 echo "" > prog.txt
-
-scan(){ #perform scan in background
+scan(){
     fn=$1
     fi=$2
     fp=$3
@@ -77,8 +43,7 @@ echo "Enter ports space-delimited (e.g. 20 22 25 80): "
 read ports
 result_str=""
 
-#this section allows the user to input ranges in the form 1-20 etc..
-for i in $ports 
+for i in $ports
 do
     if [[ "$i" == *"-"* ]]
     then
@@ -88,9 +53,8 @@ do
     fi
     result_str="$result_str $res"
 done
-final_ports=${result_str:1}
 
-#create progress counters
+final_ports=${result_str:1}
 cc=0
 tc=1
 sec=0
@@ -102,30 +66,22 @@ do
     done
 done
 
-#call scan function for each IP to run in background
 for ((i=$start; $i<=$end; i++))
 do
     scan $net $i "$final_ports" &
 done
 
-#Begin progress counter
-until [[ $cc == $tc ]]
+until [[ $(wc -l prog.txt | awk '{ print $1 }') == $tc ]]
 do
-    if [ -f "prog.txt" ]
-    then
-        cc=$(wc -l prog.txt | awk '{ print $1 }')
-    else
-        break
-    fi
+    cc=$(wc -l prog.txt | awk '{ print $1 }')
     perc="$((cc/$tc*100))"
     sec=$((sec+1))
-    echo -ne "Parent Proc: $$ Total port scans: $tc. Completed $cc. $sec seconds have elapsed\r"
+    echo -ne "Total port scans: $tc. Completed $cc. $sec seconds have elapsed\r"
     sleep 1
 done
     
 wait
 
-#When all child processes are done, print results
 echo $(cat tcplog.txt | sort | uniq -u) > tcplog.txt
 sleep 2
 
@@ -144,5 +100,24 @@ do
         fi
     else
         echo "--$i (open)"
+        #timeout 2 /bin/bash -c "exec 3<>/dev/tcp/$k/$i; echo EOF>&3; cat<&3" 2> /dev/null
+
+        # if [[ $i == 22 ]]
+        # then
+        #     echo "Try to SSH? (y/n)"
+        #     read sshyn
+        #     if [ $sshyn = "y" ]
+        #     then
+        #         terminator -T "SSH to $k" -e "ssh $k"
+        #     fi
+        # fi
     fi
 done
+
+# while IFS= read -r line
+# do
+#   echo "$line"
+# done < distros.txt
+#cat tcplog.txt
+rm tcplog.txt
+rm prog.txt

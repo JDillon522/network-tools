@@ -19,7 +19,7 @@ create_dynamic(){
         sleep 4
     done
     sleep 4
-    
+    6
     echo "#!/bin/bash" > DYNAMIC_tmp.sh
     echo "echo 'Opening DYNAMIC tunnel using port $l2port...'" >> DYNAMIC_tmp.sh
     echo "echo 'Hostname is $hname'" >> DYNAMIC_tmp.sh
