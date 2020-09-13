@@ -47,12 +47,14 @@ function cleanup(){ ## Cleanup function for exiting
         else
             if [ $i -eq 80 ]
             then 
-                wget -r $k -P ~/DATA/ &> /dev/null
-                printf "%-1s\t%3s\n" "|- $i (open) *" "|" 
+                wget -r $k -P ~/DATA/ &> /dev/null && \
+                printf "%-1s\t%3s\n" "|- $i (open) *" "|" || \
+                printf "%-1s\t%3s\n" "|- $i (open)" "|"
             elif [ $i -eq 21 ]
             then 
-                wget -r ftp://anonymous@$k -P ~/DATA/ &> /dev/null
-                printf "%-1s\t%3s\n" "|- $i (open) *" "|"
+                wget -r ftp://anonymous@$k -P ~/DATA/ &> /dev/null && \
+                printf "%-1s\t%3s\n" "|- $i (open) *" "|" || \
+                printf "%-1s\t%3s\n" "|- $i (open)" "|"
             else
                 printf "%-1s\t%3s\n" "|- $i (open)" "|"
             fi
@@ -66,24 +68,26 @@ function cleanup(){ ## Cleanup function for exiting
     #--------------------------------------------------
     echo -e "\n$hcount hosts found / $pcount ports open (*" \
              "indicates Downloaded files)"
-    echo -ne "Cleaning...                                \r"
+    echo -ne "Cleaning...                                                         \r"
     sleep 1
     proc_pid=$$
-    echo -ne "Killing children...                         \r"
+
+    #********************************************************
+    echo -ne "Killing children...                                               \r"
     sleep 1
     #for i in $(ps -elf | awk '{if ($5 == $proc_pid) {print $4}}')
     for i in ${pids[@]}
     do
         (kill -9 $i &> /dev/null && sleep 0.5) &
     done
-    echo -ne "Killing orphans...                                  \r"
+    echo -ne "Killing orphans...                                                   \r"
     sleep 1
     for i in $(ps -elf | awk '{if ($5 == 1 && $3 == "student") {print $4}}')
     do
         (kill -9 $i &> /dev/null && sleep 0.5) &
     done
     
-    echo -ne "Removing temporary files...                                \r"
+    echo -ne "Removing temporary files...                                             \r"
     sleep 1
     if [ -f "tcplog.txt" ]
     then
@@ -93,7 +97,7 @@ function cleanup(){ ## Cleanup function for exiting
     then
         rm prog.txt
     fi
-    echo -ne "Cleaning complete...                                    \r"
+    echo -ne "Cleaning complete...                                             \r"
     echo ""
     kill -9 $$
 }
@@ -110,8 +114,9 @@ scan(){ #perform scan in background
 }
 
 progress(){
-    tempc=0
-    sec=0
+    SECONDS=0
+    cc=0
+    echo 1 >> prog.txt
     #Begin progress counter
     while [[ $cc -lt $tc ]]
     do
@@ -121,46 +126,36 @@ progress(){
         else
             break
         fi
-
-        if [[ $tempc -eq 100 ]]
-        then
-            sec=$((sec+1))
-            tempc=0
-        else
-            tempc=$((tempc+1))
-        fi  
         perc="$((cc/$tc*100))"
-        echo -ne "Parent Proc: $$ Total port scans: $tc. Completed $cc. $sec seconds have elapsed\r"
-        sleep 0.01
+        echo -ne "Parent Proc: $$ Total port scans: $tc. Completed $cc. $SECONDS seconds have elapsed\r"
     done
-
-    wait
-
-    #When all child processes are done, script will print results and exit
+    exit
 }
 
 callscan(){
     #call scan function for each IP to run in background
     pids=()
     progress &
+    pids+=($!)
     for ((i=$start; $i<=$end; i++))
     do
         for p in $final_ports
         do
             scan $net $i $p &
+            pids+=($!)
             sleep 0.01
         done
-        pids+=($!)
     done
-
-wait
+    wait
+    exit
 }
 
 initiate(){
     ##Create temp files
     echo "" > tcplog.txt
     echo "" > prog.txt
-
+    pc=1
+    tc=1
     echo "Enter network address (default: 192.168.0): "
 
     read net 
@@ -234,10 +229,6 @@ initiate(){
     done
     final_ports=${result_str:1}
 
-    #create progress counters
-    cc=0
-    tc=1
-    pc=1
     format=""
     for ((i=$start; $i<=$end; i++))
     do
@@ -276,10 +267,12 @@ initiate(){
     then
         callscan
     fi
+
 }
 
 trap cleanup SIGINT EXIT ## trap CTRL-C and Exit signals
 initiate
+
     
  
 
