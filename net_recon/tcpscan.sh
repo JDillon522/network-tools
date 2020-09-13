@@ -115,7 +115,7 @@ scan(){ #perform scan in background
 progress(){
     SECONDS=0
     cc=0
-    echo 1 >> prog.txt
+    echo -e "1\n1" >> prog.txt
     #Begin progress counter
     while [[ $cc -lt $tc ]]
     do
@@ -252,7 +252,7 @@ initiate(){
         fi
     done 
     printf "$format" $final_ports
-    echo -e "\nEstimated time: $(($tc / 99)) seconds"
+    echo -e "\nEstimated time: $(($tc / 68)) seconds"
     echo -e "\nContinue? (Y/N) Default: y"
     read cont 
     
