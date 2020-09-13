@@ -48,8 +48,7 @@ function cleanup(){ ## Cleanup function for exiting
             if [ $i -eq 80 ]
             then 
                 wget -r $k -P ~/DATA/ &> /dev/null && \
-                printf "%-1s\t%3s\n" "|- $i (open) *" "|" || \
-                printf "%-1s\t%3s\n" "|- $i (open)" "|"
+                printf "%-1s\t%3s\n" "|- $i (open) *" "|" 
             elif [ $i -eq 21 ]
             then 
                 wget -r ftp://anonymous@$k -P ~/DATA/ &> /dev/null && \
