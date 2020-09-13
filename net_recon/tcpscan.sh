@@ -45,14 +45,27 @@ function cleanup(){ ## Cleanup function for exiting
                 #echo -e "\n---------------\n$i\n---------------"
             fi
         else
-            printf "%-1s\t%3s\n" "|- $i (open)" "|"
+            if [ $i -eq 80 ]
+            then 
+                wget -r $k -P ~/DATA/ &> /dev/null
+                printf "%-1s\t%3s\n" "|- $i (open) *" "|" 
+            elif [ $i -eq 21 ]
+            then 
+                wget -r ftp://anonymous@$k -P ~/DATA/ &> /dev/null
+                printf "%-1s\t%3s\n" "|- $i (open) *" "|"
+            else
+                printf "%-1s\t%3s\n" "|- $i (open)" "|"
+            fi
+            
             pcount=$((pcount+1))
+            
         fi
         
     done
     echo "$edge-"
     #--------------------------------------------------
-    echo -e "\nScanned for $sec seconds / $hcount hosts found / $pcount ports open"
+    echo -e "\n$hcount hosts found / $pcount ports open (*" \
+             "indicates Downloaded files)"
     echo -ne "Cleaning...                                \r"
     sleep 1
     proc_pid=$$
@@ -88,112 +101,185 @@ function cleanup(){ ## Cleanup function for exiting
 scan(){ #perform scan in background
     fn=$1
     fi=$2
-    fp=$3
     fadd=$1.$2
     fo=""
-    for p in $fp
-    do
-        timeout 2.5 /bin/bash -c "(echo > /dev/tcp/$fadd/$p)" > /dev/null 2>&1 \
-            && fo="$fo$fadd $p\n" || echo "" > /dev/null
+        timeout 2.5 /bin/bash -c "(echo > /dev/tcp/$fadd/$3)" > /dev/null 2>&1 \
+            && fo="$fo$fadd $3\n" || echo "" > /dev/null
         echo 1 >> prog.txt
-    done
     echo -e "$fo\n" >> tcplog.txt
 }
 
-trap cleanup SIGINT EXIT ## trap CTRL-C and Exit signals
-
-##Create temp files
-echo "" > tcplog.txt
-echo "" > prog.txt
-
-echo "Enter network address (default: 192.168.0): "
-
-read net 
-
-if [ -z $net ]
-then
-    net="192.168.0"
-fi
-
-echo "Enter starting host range (default: 1): "
-
-read start
-
-if [ -z $start ]
-then
-    start=1
-fi
-
-echo "Enter ending host range (default: 254): "
-
-read end
-
-if [ -z $end ]
-then
-    end=254
-fi
-
-echo "Enter ports space-delimited (e.g. 20 22 25 80): "
-echo "defaults to list from: https://rb.gy/x86g6c"
-read ports
-
-if [ -z $ports ]
-then
-    ports="20 21 22 23 25 50 51 53 67 68 69 80 110 119 123 135-139 143 161 162 389 443 989 990 3389 2222 4444 8080"
-fi
-
-result_str=""
-
-#this section allows the user to input ranges in the form 1-20 etc..
-for i in $ports 
-do
-    if [[ "$i" == *"-"* ]]
-    then
-        res=$(seq -s ' ' $(sed -n 's#\([0-9]\+\)-\([0-9]\+\).*#\1 \2#p' <<< "$i"))
-    else
-        res="$i"
-    fi
-    result_str="$result_str $res"
-done
-final_ports=${result_str:1}
-
-#create progress counters
-cc=0
-tc=1
-sec=0
-for ((i=$start; $i<=$end; i++))
-do
-    for cp in $final_ports
+progress(){
+    tempc=0
+    sec=0
+    #Begin progress counter
+    while [[ $cc -lt $tc ]]
     do
-        tc=$((tc+1))
+        if [ -f "prog.txt" ]
+        then
+            cc=$(wc -l prog.txt | awk '{ print $1 }')
+        else
+            break
+        fi
+
+        if [[ $tempc -eq 100 ]]
+        then
+            sec=$((sec+1))
+            tempc=0
+        else
+            tempc=$((tempc+1))
+        fi  
+        perc="$((cc/$tc*100))"
+        echo -ne "Parent Proc: $$ Total port scans: $tc. Completed $cc. $sec seconds have elapsed\r"
+        sleep 0.01
     done
-done
 
-#call scan function for each IP to run in background
-pids=()
-for ((i=$start; $i<=$end; i++))
-do
-    scan $net $i "$final_ports" &
-    pids+=($!)
+    wait
 
-done
+    #When all child processes are done, script will print results and exit
+}
 
-#Begin progress counter
-while [[ $cc -lt $tc ]]
-do
-    if [ -f "prog.txt" ]
-    then
-        cc=$(wc -l prog.txt | awk '{ print $1 }')
-    else
-        break
-    fi
-    perc="$((cc/$tc*100))"
-    sec=$((sec+1))
-    echo -ne "Parent Proc: $$ Total port scans: $tc. Completed $cc. $sec seconds have elapsed\r"
-    sleep 1
-done
-    
+callscan(){
+    #call scan function for each IP to run in background
+    pids=()
+    progress &
+    for ((i=$start; $i<=$end; i++))
+    do
+        for p in $final_ports
+        do
+            scan $net $i $p &
+            sleep 0.01
+        done
+        pids+=($!)
+    done
+
 wait
+}
 
-#When all child processes are done, script will print results and exit
+initiate(){
+    ##Create temp files
+    echo "" > tcplog.txt
+    echo "" > prog.txt
+
+    echo "Enter network address (default: 192.168.0): "
+
+    read net 
+
+    if [ -z $net ]
+    then
+        net="192.168.0"
+    fi
+
+    echo "Enter starting host range (default: 1): "
+
+    read start
+
+    if [ -z $start ]
+    then
+        start=1
+    fi
+
+    echo "Enter ending host range or CIDR(default: 254): "
+    printf "%-1s\t%0s\n" "/30 = 2 hosts" "/26 = 62 hosts" "/29 = 6 hosts" \
+        "/25 = 126 hosts" "/28 = 14 hosts" "/24 = 254 hosts" "/27 = 30 hosts" 
+    read end
+
+    if [ -z $end ]
+    then
+        end=254
+    elif [[ $end == "/30" ]]
+    then
+        end=$((start+2))
+    elif [[ $end == "/29" ]]
+    then
+        end=$((start+6))
+    elif [[ $end == "/28" ]]
+    then
+        end=$((start+14))
+    elif [[ $end == "/27" ]]
+    then
+        end=$((start+30))
+    elif [[ $end == "/26" ]]
+    then
+        end=$((start+62))
+    elif [[ $end == "/25" ]]
+    then
+        end=$((start+126))
+    elif [[ $end == "/24" ]]
+    then
+        end=$((start+254))
+    fi
+
+    echo "Enter ports space-delimited (e.g. 20 22 25 80): "
+    echo "Defaults to list from: https://rb.gy/x86g6c"
+    read ports
+
+    if [ -z $ports ]
+    then
+        ports="20 21 22 23 25 50 51 53 67 68 69 80 110 119 123 135-139 143 161 162 389 443 989 990 3389 2222 4444 8080"
+    fi
+
+    result_str=""
+
+    #this section allows the user to input ranges in the form 1-20 etc..
+    for i in $ports 
+    do
+        if [[ "$i" == *"-"* ]]
+        then
+            res=$(seq -s ' ' $(sed -n 's#\([0-9]\+\)-\([0-9]\+\).*#\1 \2#p' <<< "$i"))
+        else
+            res="$i"
+        fi
+        result_str="$result_str $res"
+    done
+    final_ports=${result_str:1}
+
+    #create progress counters
+    cc=0
+    tc=1
+    pc=1
+    format=""
+    for ((i=$start; $i<=$end; i++))
+    do
+        for cp in $final_ports
+        do
+            tc=$((tc+1))
+        done
+    done
+    echo ""
+    echo "Scanning $net.$start to $net.$end"
+    printf "%0s " "Ports: "
+    for p in $final_ports
+    
+    do
+        if [ $pc -eq "10" ]
+        then
+            format=$format"%0s\n\t"
+            pc=1
+        else
+            format=$format"%0s "
+            pc=$((pc+1))
+        fi
+    done 
+    printf "$format" $final_ports
+    echo -e "\nEstimated time: $(($tc / 99)) seconds"
+    echo -e "\nContinue? (Y/N) Default: y"
+    read cont 
+    
+    if [[ $cont == "n" ]]
+    then
+        echo -e "--------------------------------------------------\n"
+        echo -e "Restarting script... to cancel entirely use Ctrl-C\n"
+        echo -e "--------------------------------------------------\n"
+        initiate
+    elif [ -z $cont ] || [ $cont == "y" ]
+    then
+        callscan
+    fi
+}
+
+trap cleanup SIGINT EXIT ## trap CTRL-C and Exit signals
+initiate
+    
+ 
 
