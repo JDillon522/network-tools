@@ -67,27 +67,36 @@ function cleanup(){ ## Cleanup function for exiting
     #--------------------------------------------------
     echo -e "\n$hcount hosts found / $pcount ports open (*" \
              "indicates Downloaded files)"
-    echo -ne "Cleaning...                                                         \r"
+    echo -ne "Cleaning...                                                                                 \r"
     sleep 1
     proc_pid=$$
 
     #********************************************************
-    echo -ne "Killing children...                                               \r"
-    sleep 1
+    echo -ne "Killing children...                                                                          \r"
+    sleep 2
     #for i in $(ps -elf | awk '{if ($5 == $proc_pid) {print $4}}')
-    for i in ${pids[@]}
+    for i in $(ps -ef | awk '{if ($3 == "17619") {print $0}}')
     do
-        (kill -9 $i &> /dev/null && sleep 0.5) &
+        (kill -9 $i &> /dev/null) &
+        sleep 0.05
     done
+<<<<<<< HEAD
     echo -ne "Killing orphans...                                                   \r"
     sleep 1
     uname=$(whoami)
     for i in $(ps -elf | grep $uname | awk '{if ($5 == 1) {print $4}}')
+=======
+
+    echo -ne "Killing orphans...                                                                             \r"
+    sleep 2
+    for i in $(ps -elf | awk '{if ($5 == 1 && $3 == "student") {print $4}}')
+>>>>>>> 54a5500adb98844fccd3d9e985421ccbb56c00fd
     do
-        (kill -9 $i &> /dev/null && sleep 0.5) &
+        (kill -9 $i &> /dev/null) &
+        sleep 0.05
     done
     
-    echo -ne "Removing temporary files...                                             \r"
+    echo -ne "Removing temporary files...                                                                     \r"
     sleep 1
     if [ -f "tcplog.txt" ]
     then
@@ -97,7 +106,7 @@ function cleanup(){ ## Cleanup function for exiting
     then
         rm prog.txt
     fi
-    echo -ne "Cleaning complete...                                             \r"
+    echo -ne "Cleaning complete...                                                                            \r"
     echo ""
     kill -9 $$
 }
@@ -113,29 +122,31 @@ scan(){ #perform scan in background
     echo -e "$fo\n" >> tcplog.txt
 }
 
+
 progress(){
-    SECONDS=0
-    cc=0
-    echo -e "1\n1" >> prog.txt
     #Begin progress counter
+    echo -e "1\n1\n1\n1\n1\n" >> prog.txt
     while [[ $cc -lt $tc ]]
     do
-        if [ -f "prog.txt" ]
-        then
-            cc=$(wc -l prog.txt | awk '{ print $1 }')
-        else
-            break
-        fi
         perc="$((cc/$tc*100))"
+        #gpid=
+        cc=$(cat prog.txt | wc -l)
         echo -ne "Parent Proc: $$ Total port scans: $tc. Completed $cc. $SECONDS seconds have elapsed\r"
     done
 }
 
 callscan(){
     #call scan function for each IP to run in background
+<<<<<<< HEAD
     uname=$(whoami)
     pids=()
     pids+=($!)
+=======
+    declare -g cc=0
+    SECONDS=0
+    pids=()
+    progress &
+>>>>>>> 54a5500adb98844fccd3d9e985421ccbb56c00fd
     for ((i=$start; $i<=$end; i++))
     do
         for p in $final_ports
@@ -157,7 +168,7 @@ initiate(){
     echo "" > tcplog.txt
     echo "" > prog.txt
     pc=1
-    tc=1
+    declare -g tc=1
     echo "Enter network address (default: 192.168.0): "
 
     read net 
@@ -274,7 +285,7 @@ initiate(){
     exit
 }
 
-trap cleanup SIGINT EXIT ## trap CTRL-C and Exit signals
+trap cleanup SIGINT EXIT ## trap CTRL-C
 initiate
 
     
