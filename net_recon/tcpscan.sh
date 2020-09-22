@@ -80,17 +80,10 @@ function cleanup(){ ## Cleanup function for exiting
         (kill -9 $i &> /dev/null) &
         sleep 0.05
     done
-<<<<<<< HEAD
     echo -ne "Killing orphans...                                                   \r"
     sleep 1
     uname=$(whoami)
     for i in $(ps -elf | grep $uname | awk '{if ($5 == 1) {print $4}}')
-=======
-
-    echo -ne "Killing orphans...                                                                             \r"
-    sleep 2
-    for i in $(ps -elf | awk '{if ($5 == 1 && $3 == "student") {print $4}}')
->>>>>>> 54a5500adb98844fccd3d9e985421ccbb56c00fd
     do
         (kill -9 $i &> /dev/null) &
         sleep 0.05
@@ -137,22 +130,15 @@ progress(){
 
 callscan(){
     #call scan function for each IP to run in background
-<<<<<<< HEAD
     uname=$(whoami)
     pids=()
     pids+=($!)
-=======
-    declare -g cc=0
-    SECONDS=0
-    pids=()
-    progress &
->>>>>>> 54a5500adb98844fccd3d9e985421ccbb56c00fd
     for ((i=$start; $i<=$end; i++))
     do
         for p in $final_ports
         do
             pcount=$(ps -elf | grep -v grep | grep /dev/tcp | wc -l)
-            if [ $pcount -gt 40 ]
+            if [ $pcount -gt 45 ]
             then
                 sleep 0.25
             fi
