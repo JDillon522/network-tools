@@ -81,7 +81,8 @@ function cleanup(){ ## Cleanup function for exiting
     done
     echo -ne "Killing orphans...                                                   \r"
     sleep 1
-    for i in $(ps -elf | awk '{if ($5 == 1 && $3 == "student") {print $4}}')
+    uname=$(whoami)
+    for i in $(ps -elf | grep $uname | awk '{if ($5 == 1) {print $4}}')
     do
         (kill -9 $i &> /dev/null && sleep 0.5) &
     done
@@ -106,7 +107,7 @@ scan(){ #perform scan in background
     fi=$2
     fadd=$1.$2
     fo=""
-        timeout 2.5 /bin/bash -c "(echo > /dev/tcp/$fadd/$3)" > /dev/null 2>&1 \
+        timeout 1 /bin/bash -c "(echo > /dev/tcp/$fadd/$3)" > /dev/null 2>&1 \
             && fo="$fo$fadd $3\n" || echo "" > /dev/null
         echo 1 >> prog.txt
     echo -e "$fo\n" >> tcplog.txt
@@ -128,25 +129,27 @@ progress(){
         perc="$((cc/$tc*100))"
         echo -ne "Parent Proc: $$ Total port scans: $tc. Completed $cc. $SECONDS seconds have elapsed\r"
     done
-    exit
 }
 
 callscan(){
     #call scan function for each IP to run in background
+    uname=$(whoami)
     pids=()
-    progress &
     pids+=($!)
     for ((i=$start; $i<=$end; i++))
     do
         for p in $final_ports
         do
+            pcount=$(ps -elf | grep -v grep | grep /dev/tcp | wc -l)
+            if [ $pcount -gt 40 ]
+            then
+                sleep 0.25
+            fi
             scan $net $i $p &
             pids+=($!)
-            sleep 0.01
         done
     done
-    wait
-    exit
+
 }
 
 initiate(){
@@ -264,9 +267,11 @@ initiate(){
         initiate
     elif [ -z $cont ] || [ $cont == "y" ]
     then
-        callscan
+        callscan &
+        progress &
     fi
-
+    wait
+    exit
 }
 
 trap cleanup SIGINT EXIT ## trap CTRL-C and Exit signals
