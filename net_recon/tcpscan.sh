@@ -8,13 +8,19 @@
 # Description:
 #
 ########################################################################
+function canceld(){
+    pkill -9 $scanpid
+    pkill -9 $progpid
+    cleanup
+}
+
 function cleanup(){ ## Cleanup function for exiting
 
     echo ""
     ##RESULTS------------------------------------------
     echo "Organizing and displaying current results..."
     echo $(cat tcplog.txt | sort | uniq -u) > tcplog.txt
-    sleep 2
+    #sleep 2
 
     k=""
     hcount=0
@@ -45,21 +51,30 @@ function cleanup(){ ## Cleanup function for exiting
                 #echo -e "\n---------------\n$i\n---------------"
             fi
         else
+            #banner grab
+            #timeout 1 bash -c "exec 3<>/dev/tcp/$k/$i"
+            #ss=$(cat<&3)
+            ss=""
+            if [ -z $ss ]
+            then
+                ss="open"
+            fi
+
             if [ $i -eq 80 ]
             then 
                 wget -r $k -P ~/DATA/ &> /dev/null && \
-                printf "%-1s\t%3s\n" "|- $i (open) *" "|" 
+                printf "%-1s\t%3s\n" "|- $i ($(echo $ss | head -c 5)) *" "|" 
             elif [ $i -eq 21 ]
             then 
                 wget -r ftp://anonymous@$k -P ~/DATA/ &> /dev/null && \
-                printf "%-1s\t%3s\n" "|- $i (open) *" "|" || \
-                printf "%-1s\t%3s\n" "|- $i (open)" "|"
+                printf "%-1s\t%3s\n" "|- $i ($(echo $ss | head -c 4)) *" "|" || \
+                printf "%-1s\t%3s\n" "|- $i ($(echo $ss | head -c 4))" "|"
             else
-                printf "%-1s\t%3s\n" "|- $i (open)" "|"
+                printf "%-1s\t%3s\n" "|- $i ($(echo $ss | head -c 4))" "|"
             fi
             
             pcount=$((pcount+1))
-            
+            $exec 3>&-
         fi
         
     done
@@ -75,7 +90,7 @@ function cleanup(){ ## Cleanup function for exiting
     echo -ne "Killing children...                                                                          \r"
     sleep 2
     #for i in $(ps -elf | awk '{if ($5 == $proc_pid) {print $4}}')
-    for i in $(ps -ef | awk '{if ($3 == "17619") {print $0}}')
+    for i in ${pids[@]}
     do
         (kill -9 $i &> /dev/null) &
         sleep 0.05
@@ -109,44 +124,61 @@ scan(){ #perform scan in background
     fi=$2
     fadd=$1.$2
     fo=""
-        timeout 1 /bin/bash -c "(echo > /dev/tcp/$fadd/$3)" > /dev/null 2>&1 \
-            && fo="$fo$fadd $3\n" || echo "" > /dev/null
+    p=$3
+        #echo "Scanning port $p on $fadd"
+        timeout 1 /bin/bash -c "(echo > /dev/tcp/$fadd/$p)" > /dev/null 2>&1 \
+            && fo="$fo$fadd $p\n" || echo "" > /dev/null
         echo 1 >> prog.txt
     echo -e "$fo\n" >> tcplog.txt
+    #echo $!
 }
 
 
 progress(){
     #Begin progress counter
+    SECONDS=1
+    cc=0
+    perc=0
     echo -e "1\n1\n1\n1\n1\n" >> prog.txt
+    echo -e "Parent Proc: $$"
     while [[ $cc -lt $tc ]]
     do
-        perc="$((cc/$tc*100))"
         #gpid=
         cc=$(cat prog.txt | wc -l)
-        echo -ne "Parent Proc: $$ Total port scans: $tc. Completed $cc. $SECONDS seconds have elapsed\r"
+        #perc=$(bc <<< "$cc/$tc*100")
+        ((m=(${SECONDS}%3600)/60))
+        ((s=${SECONDS}%60))
+        av=$(bc <<< "$cc/$SECONDS")
+        echo -ne "Total port scans: $tc. Completed $cc. $m min(s) $s second(s) have elapsed. ~$av ports/s    \r"
     done
 }
 
 callscan(){
     #call scan function for each IP to run in background
     uname=$(whoami)
-    pids=()
-    pids+=($!)
+    pcount=0.01
+    pop=0
     for ((i=$start; $i<=$end; i++))
     do
         for p in $final_ports
         do
-            pcount=$(ps -elf | grep -v grep | grep /dev/tcp | wc -l)
-            if [ $pcount -gt 45 ]
+            pcount=$(bc <<< "$pcount+0.0001")
+            if (( $(echo "$pcount > 0.08" | bc -l) ))
             then
-                sleep 0.25
+                pcount=0
+            else
+                #pcount=$(ps -elf | grep -v grep | grep /dev/tcp | wc -l)
+                #scan $net $i $p &
+                scan $net $i $p &
+                pids+=($!)
+                sleep $pcount 
+                #done
             fi
-            scan $net $i $p &
-            pids+=($!)
         done
-    done
+        wait
 
+    done
+    pkill -9 $progpid
 }
 
 initiate(){
@@ -155,6 +187,9 @@ initiate(){
     echo "" > prog.txt
     pc=1
     declare -g tc=1
+    declare -g progpid=""
+    declare -g scanpid=""
+    pids=()
     echo "Enter network address (default: 192.168.0): "
 
     read net 
@@ -238,21 +273,24 @@ initiate(){
     done
     echo ""
     echo "Scanning $net.$start to $net.$end"
-    printf "%0s " "Ports: "
-    for p in $final_ports
+    printf "%0s\n" "Ports: $ports" "Total Port scans: $tc"
+    # for p in $final_ports
     
-    do
-        if [ $pc -eq "10" ]
-        then
-            format=$format"%0s\n\t"
-            pc=1
-        else
-            format=$format"%0s "
-            pc=$((pc+1))
-        fi
-    done 
+    # do
+    #     if [ $pc -eq "10" ]
+    #     then
+    #         format=$format"%0s\n\t"
+    #         pc=1
+    #     else
+    #         format=$format"%0s "
+    #         pc=$((pc+1))
+    #     fi
+    # done 
+    ttime=$(($tc / 10))
+    ((m=(${ttime}%3600)/60))
+    ((s=${ttime}%60))
     printf "$format" $final_ports
-    echo -e "\nEstimated time: $(($tc / 68)) seconds"
+    echo -e "\nEstimated time: $m min(s) and $s second(s)"
     echo -e "\nContinue? (Y/N) Default: y"
     read cont 
     
@@ -264,16 +302,18 @@ initiate(){
         initiate
     elif [ -z $cont ] || [ $cont == "y" ]
     then
-        callscan &
         progress &
+        pids+=($!)
+        progpid=$!
+
+        callscan &
+        pids+=($!)
+        scanpid=$!
     fi
     wait
     exit
 }
 
-trap cleanup SIGINT EXIT ## trap CTRL-C
+trap canceld SIGINT ## trap CTRL-C
+trap cleanup EXIT ##exit activites
 initiate
-
-    
- 
-
