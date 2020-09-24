@@ -52,10 +52,8 @@ function cleanup(){ ## Cleanup function for exiting
             fi
         else
             #banner grab
-            #timeout 1 bash -c "exec 3<>/dev/tcp/$k/$i"
-            #ss=$(cat<&3)
-            ss=""
-            if [ -z $ss ]
+            ss=$(timeout 1 bash -c "exec 3<>/dev/tcp/$k/$i; echo EOF>&3; cat<&3")
+            if [[ -z $ss ]]
             then
                 ss="open"
             fi
@@ -67,10 +65,10 @@ function cleanup(){ ## Cleanup function for exiting
             elif [ $i -eq 21 ]
             then 
                 wget -r ftp://anonymous@$k -P ~/DATA/ &> /dev/null && \
-                printf "%-1s\t%3s\n" "|- $i ($(echo $ss | head -c 4)) *" "|" || \
-                printf "%-1s\t%3s\n" "|- $i ($(echo $ss | head -c 4))" "|"
+                printf "%-1s\t%3s\n" "|- $i ($(echo $ss | head -c 5)) *" "|" || \
+                printf "%-1s\t%3s\n" "|- $i ($(echo $ss | head -c 5))" "|"
             else
-                printf "%-1s\t%3s\n" "|- $i ($(echo $ss | head -c 4))" "|"
+                printf "%-1s\t%3s\n" "|- $i ($(echo $ss | head -c 5))" "|"
             fi
             
             pcount=$((pcount+1))
