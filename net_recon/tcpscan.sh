@@ -37,17 +37,15 @@ function cleanup(){ ## Cleanup function for exiting
                 fi
                 k=$i
                 hcount=$((hcount+1))
-                msg="| $i"             
+                msg="$i"             
                 lmsg=$((18-${#msg}))
                 for s in $(seq $lmsg)
                 do
                     msg=$msg" "
                 done
-                echo -e "$edge-\n"
-                edge=$(echo "$msg" | sed 's/./-/g')
                 echo -e "$edge-"
-                echo "$msg|"
-                echo "$edge-"
+                edge=$(echo "$msg" | sed 's/./-/g')
+                echo "$msg"
                 #echo -e "\n---------------\n$i\n---------------"
             fi
         else
@@ -61,14 +59,14 @@ function cleanup(){ ## Cleanup function for exiting
             if [ $i -eq 80 ]
             then 
                 wget -r $k -P ~/DATA/ &> /dev/null && \
-                printf "%-1s\t%3s\n" "|- $i ($(echo $ss | head -c 5)) *" "|" 
+                printf "%-1s\t%3s\n" "|-> $i ($(echo $ss | head -c 5)) *"
             elif [ $i -eq 21 ]
             then 
                 wget -r ftp://anonymous@$k -P ~/DATA/ &> /dev/null && \
-                printf "%-1s\t%3s\n" "|- $i ($(echo $ss | head -c 5)) *" "|" || \
-                printf "%-1s\t%3s\n" "|- $i ($(echo $ss | head -c 5))" "|"
+                printf "%-1s\t%3s\n" "|-> $i ($(echo $ss | head -c 5)) *" || \
+                printf "%-1s\t%3s\n" "|-> $i ($(echo $ss | head -c 5))"
             else
-                printf "%-1s\t%3s\n" "|- $i ($(echo $ss | head -c 5))" "|"
+                printf "%-1s\t%3s\n" "|-> $i ($(echo $ss | head -c 5))"
             fi
             
             pcount=$((pcount+1))
@@ -160,8 +158,8 @@ callscan(){
     do
         for p in $final_ports
         do
-            pcount=$(bc <<< "$pcount+0.0001")
-            if (( $(echo "$pcount > 0.08" | bc -l) ))
+            pcount=$(bc <<< "$pcount+0.0002")
+            if (( $(echo "$pcount > 0.05" | bc -l) ))
             then
                 pcount=0
             else
