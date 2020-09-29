@@ -140,6 +140,7 @@ progress(){
     while [[ $cc -lt $tc ]]
     do
         #gpid=
+        echo -e "1\n" >> prog.txt
         cc=$(cat prog.txt | wc -l)
         #perc=$(bc <<< "$cc/$tc*100")
         ((m=(${SECONDS}%3600)/60))
@@ -152,22 +153,32 @@ progress(){
 callscan(){
     #call scan function for each IP to run in background
     uname=$(whoami)
-    pcount=0.01
+    # pcount=0.01
+    pcount=0
     pop=0
     for ((i=$start; $i<=$end; i++))
     do
         for p in $final_ports
         do
-            pcount=$(bc <<< "$pcount+0.0002")
-            if (( $(echo "$pcount > 0.05" | bc -l) ))
+            # pcount=$(bc <<< "$pcount+0.0001")
+            # if (( $(echo "$pcount > 0.05" | bc -l) ))
+            if [ $pcount -gt 450 ]
             then
+                sleep 1
+                for kp in kpids
+                do
+                    pkill -9 kp
+                done
+                unset kpids
                 pcount=0
             else
                 #pcount=$(ps -elf | grep -v grep | grep /dev/tcp | wc -l)
                 #scan $net $i $p &
                 scan $net $i $p &
                 pids+=($!)
-                sleep $pcount 
+                kpids+=($!)
+                pcount=$((pcount+1))
+                # sleep $pcount 
                 #done
             fi
         done
@@ -186,6 +197,7 @@ initiate(){
     declare -g progpid=""
     declare -g scanpid=""
     pids=()
+    kpids=()
     echo "Enter network address (default: 192.168.0): "
 
     read net 
